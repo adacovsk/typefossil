@@ -286,3 +286,44 @@ def add_tittle(base: np.ndarray, donor: np.ndarray, x_height_top: int,
     if len(b_cols) and len(d_cols):
         dx = float(b_cols.mean() - d_cols.mean())
     return union(base, shift(dot, 0, dx))
+
+
+def cap_height(mask: np.ndarray, baseline: int, level: float = 0.5) -> int | None:
+    """Height from the baseline to the top of the ink.
+
+    Measured from the baseline rather than as total ink height, so a capital
+    that descends below the line -- 'J' and 'Q' in many cuts -- is not counted
+    as taller than its neighbours.
+    """
+    rows = np.where((mask > level).any(axis=1))[0]
+    return None if len(rows) == 0 else int(baseline - rows[0])
+
+
+def normalise_cap_height(masters: dict, baseline: int, target: int | None = None,
+                         chars: str | None = None, tolerance: float = 0.06) -> dict:
+    """Bring capitals to a single cap height.
+
+    A book prints the same capital at more than one size: an ordinary
+    line-opening capital, and a larger one at a section head. Clustering does
+    not distinguish them -- they are the same shape -- so whichever the label
+    happens to point at is the one that reaches the font, and a letter picked
+    from the larger sort towers over its neighbours.
+
+    Rescaling is the right correction rather than a fudge, because the two are
+    the same design at different sizes, which is exactly the relationship this
+    module already handles between cuts. Letters already within ``tolerance``
+    of the target are left untouched, so a normal capital is never resampled
+    for nothing.
+    """
+    keys = [c for c in masters if (c in chars if chars else c.isupper())]
+    heights = {c: cap_height(masters[c], baseline) for c in keys}
+    heights = {c: h for c, h in heights.items() if h}
+    if not heights:
+        return dict(masters)
+    goal = target or int(np.median(list(heights.values())))
+    out = dict(masters)
+    for c, h in heights.items():
+        if abs(h - goal) <= goal * tolerance:
+            continue
+        out[c] = soften(scale(masters[c], goal / float(h), baseline, order=3), 0.6)
+    return out

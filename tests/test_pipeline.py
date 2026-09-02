@@ -182,3 +182,12 @@ def test_build_accepts_per_glyph_tolerance():
     glyf = fb.font["glyf"]
     # A looser tolerance must not produce more points than a tight one.
     assert len(glyf["B"].coordinates) <= len(glyf["a"].coordinates)
+
+
+def test_normalise_cap_height_shrinks_an_oversized_capital():
+    from typefossil import compose
+    small = np.zeros((300, 120)); small[132:232, 20:80] = 1.0     # cap height 100
+    big = np.zeros((300, 120)); big[92:232, 20:100] = 1.0          # cap height 140
+    out = compose.normalise_cap_height({"A": small, "B": small.copy(), "E": big}, 232)
+    hs = [compose.cap_height(out[c], 232) for c in "ABE"]
+    assert max(hs) - min(hs) <= 12
