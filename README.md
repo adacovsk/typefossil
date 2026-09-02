@@ -31,7 +31,11 @@ blackletter incunable is unreliable, and a mislabelled cluster is not a blurry
 letter — it is the *wrong* letter, silently, in every word that uses it. Reading
 a contact sheet of sixty averaged glyphs takes a couple of minutes.
 
-## Two details that carry most of the quality
+## Four details that carry most of the quality
+
+Each of these was found by building a real font and looking at it. None of them
+shows up in the build output, and three of them produce a font that looks
+plausible while being wrong.
 
 **Baseline anchoring.** Every instance is placed in a fixed frame whose rows are
 measured from its text line's baseline, not from the letter's own bounding box.
@@ -42,6 +46,29 @@ mixes them. The frame *is* the feature vector.
 averaging stage cannot be recovered downstream, and noise cancelled there never
 has to be smoothed out later — smoothing that would take the genuine corners of
 a blackletter pen stroke with it.
+
+**More instances is not a better master.** k-means splits one sort across
+several clusters, and it splits by whatever varies most — ink weight, a slight
+skew — not by identity. Averaging all of them together folds a crisp master into
+a smeared one. `merge_masters` anchors on the sharpest and admits only clusters
+that agree with it.
+
+**Seating beats inferring.** Per-line baselines drift, and clustering preserves
+the drift rather than averaging it out, so a letter ends up riding high or low.
+Which letters descend is a fact about the alphabet, so `seat_masters` puts
+non-descenders on their foot and aligns descenders by their bowls — rather than
+trying to read the baseline off the bitmap, which fails on some letter no matter
+which heuristic you pick.
+
+## The failure mode to watch for
+
+A mislabelled cluster is **not** a blurry glyph — it is the *wrong letter*,
+silently, everywhere it appears. In this face `b` and `h` differ only in whether
+the bowl closes on the stem, and at contact-sheet size they are
+indistinguishable; the first Troy build had no `b` at all, every one of them an
+`h`, and it built and rendered and read as perfectly plausible. Run
+`cluster.confusions()` over your labelled masters before you trust a build, and
+check any flagged pair at full size.
 
 ## Usage
 
