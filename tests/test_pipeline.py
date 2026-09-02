@@ -154,18 +154,21 @@ def test_masters_round_trip_through_the_archive(tmp_path=None):
     assert np.allclose(back["a"], masters["a"])
 
 
-def test_baseline_row_ignores_a_descender():
+def test_seat_masters_puts_non_descenders_on_the_baseline():
     from typefossil import compose
-    body = np.zeros((300, 120))
-    body[100:180, 20:80] = 1.0
-    with_tail = body.copy()
-    with_tail[180:250, 35:50] = 1.0
-    assert compose.baseline_row(body) == compose.baseline_row(with_tail)
+    high = np.zeros((300, 120)); high[60:140, 20:80] = 1.0
+    low = np.zeros((300, 120)); low[120:200, 20:80] = 1.0
+    seated = compose.seat_masters({"n": high, "o": low}, baseline=232, x_height=77)
+    for m in seated.values():
+        assert compose.foot_row(m) == 232
 
 
-def test_snap_baseline_seats_a_high_glyph():
+def test_seat_masters_keeps_a_descender_below_the_line():
     from typefossil import compose
-    m = np.zeros((300, 120))
-    m[60:140, 20:80] = 1.0            # sits well above the baseline
-    s = compose.snap_baseline(m, 232)
-    assert abs(compose.baseline_row(s) - 232) <= 1
+    body = np.zeros((300, 120)); body[150:232, 20:80] = 1.0
+    desc = np.zeros((300, 120))
+    desc[150:232, 20:80] = 1.0
+    desc[232:280, 40:56] = 1.0
+    seated = compose.seat_masters({"n": body, "p": desc}, baseline=232, x_height=82)
+    assert compose.foot_row(seated["n"]) == 232
+    assert compose.foot_row(seated["p"]) > 232      # tail still hangs

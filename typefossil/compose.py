@@ -144,23 +144,80 @@ def weight(mask: np.ndarray, amount: int) -> np.ndarray:
     return op(mask, size=(abs(amount) * 2 + 1, abs(amount) * 2 + 1))
 
 
-def baseline_row(mask: np.ndarray, level: float = 0.5,
-                 width_frac: float = 0.55) -> int | None:
-    """Estimate where a glyph actually sits on the baseline.
+#: Latin lowercase letters whose design descends below the baseline. Which
+#: letters descend is a fact about the alphabet, not something to infer from
+#: the bitmap -- see `seat_masters` for why inferring it does not work.
+DESCENDERS = set("gjpqy")
 
-    Not simply the lowest ink: that is wrong for every descender. It is the
-    lowest row at which the glyph is still *wide* -- the bottom of the bowl or
-    the feet -- because a descender's tail is narrow relative to its body. For
-    a letter with no descender the two coincide, so one rule covers both.
-    """
-    ink = mask > level
-    widths = ink.sum(axis=1)
-    if not widths.any():
-        return None
-    rows = np.where(widths >= widths.max() * width_frac)[0]
+
+def foot_row(mask: np.ndarray, level: float = 0.5) -> int | None:
+    """The lowest row carrying ink. For a non-descender this is the baseline."""
+    rows = np.where((mask > level).any(axis=1))[0]
     return int(rows[-1]) if len(rows) else None
 
 
+def _profile(mask: np.ndarray, level: float = 0.5) -> np.ndarray:
+    return (mask > level).sum(axis=1).astype(float)
+
+
+def _best_shift(mask: np.ndarray, reference: np.ndarray, lo: int, hi: int,
+                limit: int = 40) -> int:
+    """Vertical shift aligning ``mask`` to ``reference`` over rows ``lo:hi``."""
+    a = _profile(mask)
+    r = _profile(reference)[lo:hi]
+    r = r - r.mean()
+    best, best_score = 0, -np.inf
+    for s in range(-limit, limit + 1):
+        seg = a[lo - s:hi - s]
+        if len(seg) != len(r):
+            continue
+        seg = seg - seg.mean()
+        denom = np.linalg.norm(seg) * np.linalg.norm(r)
+        score = 0.0 if denom == 0 else float((seg @ r) / denom)
+        if score > best_score:
+            best, best_score = s, score
+    return best
+
+
+def seat_masters(masters: dict, baseline: int, x_height: int,
+                 descenders: set | None = None) -> dict:
+    """Seat every master on a common baseline.
+
+    Per-line baseline estimates drift, and clustering preserves the drift
+    rather than averaging it out -- vertical offset is exactly what k-means
+    keys on, so one letter ends up split into a high group and a low group and
+    then rides high or low in the finished font.
+
+    Seating is done two ways because one rule does not cover both cases, and
+    three attempts at a single rule all failed on some letter. Lowest ink is
+    wrong for descenders. Lowest *wide* row is wrong for 'y', which tapers into
+    its tail with no step. Sharpest width drop is wrong for descenders too,
+    since their steepest fall is where the tail ends. Lowest row wider than the
+    tail is wrong for round letters, whose curved foot reads as a tail.
+
+    So: a letter that does not descend is seated on its foot, which is exactly
+    the baseline and needs no inference. A letter that does descend is aligned
+    by correlating its ink profile against the letters already seated, over the
+    x-height band only -- its bowl has to line up with everyone else's body,
+    and the tail below is simply not consulted.
+    """
+    descenders = DESCENDERS if descenders is None else descenders
+    seated = {}
+    for ch, m in masters.items():
+        if ch in descenders:
+            continue
+        foot = foot_row(m)
+        seated[ch] = m.copy() if foot is None else shift(m, baseline - foot, 0)
+
+    if not seated:
+        return {**masters}
+    reference = sum(seated.values()) / len(seated)
+    lo, hi = max(0, baseline - x_height), baseline + 1
+    for ch, m in masters.items():
+        if ch not in descenders:
+            continue
+        seated[ch] = shift(m, _best_shift(m, reference, lo, hi), 0)
+    return seated
 def snap_baseline(mask: np.ndarray, baseline: int, **kw) -> np.ndarray:
     """Move a master so it sits on the baseline.
 
