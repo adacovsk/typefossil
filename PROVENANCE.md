@@ -99,10 +99,22 @@ volume, but blackletter OCR maps yogh and long-s to `z`, so most of those are
 spurious. Mapping the genuine z-words to a fraction of the text, and that
 fraction to a leaf number, put it at leaves 414–442.
 
-**Still absent**: `0`, `1`, and capitals `D F K Q R U X Z`; also `! " ' ( ) :`.
-Each is a letter the sampled pages do not print often enough to average a clean
-master from. The remedy is more source, not more processing — Kelmscott issued
-some fifty volumes in these two types.
+**Still absent**: `0`, `1`, capitals `C F K Q R U X Z`, and `! " ' ( ) :`.
+
+These were searched for hard rather than assumed missing. The corpus sampled is
+185 pages of Godefrey and 128 of the Chaucer -- roughly 370,000 glyph instances
+-- and none of them contains these characters in usable form. A later pass
+added 124 further Godefrey pages specifically hunting the capitals and found
+none; its few capital clusters were blurrier than the Chaucer ones already in
+the font and were discarded rather than allowed to regress it.
+
+The reason is the text, not the sampling. Godefrey opens chapters with woodcut
+initials rather than type, so it prints few capitals at all; the Chaucer's verse
+capitals are frequent but follow the distribution of words that begin lines of
+Middle English poetry, in which `Q`, `X` and `Z` scarcely appear. `0` and `1`
+are absent for the same reason as the other digits nearly were -- arabic figures
+occur only in the Astrolabe -- and those two simply did not recur often enough
+there to average a clean master.
 
 Nothing in this font is invented. Every glyph is traced from printed
 impressions of Morris's type. The one composed element is the tittle on `j`,
