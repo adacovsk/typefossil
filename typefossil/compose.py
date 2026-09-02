@@ -299,6 +299,43 @@ def cap_height(mask: np.ndarray, baseline: int, level: float = 0.5) -> int | Non
     return None if len(rows) == 0 else int(baseline - rows[0])
 
 
+def normalise_height(masters: dict, baseline: int, chars, target: int | None = None,
+                     tolerance: float = 0.06) -> dict:
+    """Bring a group of glyphs that should share a height to one height.
+
+    Three groups need this and all fail the same way. A book prints the same
+    capital at two sizes -- a line opening and a larger section head -- and
+    clustering cannot separate them because they are the same shape, so a
+    letter picked from the larger sort towers over its neighbours. Digits drawn
+    from different contexts land at different sizes for the same reason. And an
+    x-height letter whose master came from a slightly heavier or larger
+    impression sits proud of the line, which reads as the letter being badly
+    positioned even though its foot is exactly on the baseline.
+
+    Rescaling is the correction rather than a fudge: these are one design at
+    more than one size, the same relationship this module already handles
+    between cuts of a face. Glyphs already within ``tolerance`` are left
+    untouched rather than resampled for nothing.
+    """
+    keys = [c for c in masters if c in chars]
+    heights = {c: cap_height(masters[c], baseline) for c in keys}
+    heights = {c: h for c, h in heights.items() if h}
+    if not heights:
+        return dict(masters)
+    goal = target or int(np.median(list(heights.values())))
+    out = dict(masters)
+    for c, h in heights.items():
+        if abs(h - goal) <= goal * tolerance:
+            continue
+        out[c] = soften(scale(masters[c], goal / float(h), baseline, order=3), 0.6)
+    return out
+
+
+#: Lowercase letters with neither ascender nor descender: they all share the
+#: x-height, so a master that does not is wrong rather than merely different.
+X_HEIGHT_LETTERS = set("acemnorsuvwxz")
+
+
 def normalise_cap_height(masters: dict, baseline: int, target: int | None = None,
                          chars: str | None = None, tolerance: float = 0.06) -> dict:
     """Bring capitals to a single cap height.
@@ -315,15 +352,37 @@ def normalise_cap_height(masters: dict, baseline: int, target: int | None = None
     of the target are left untouched, so a normal capital is never resampled
     for nothing.
     """
-    keys = [c for c in masters if (c in chars if chars else c.isupper())]
-    heights = {c: cap_height(masters[c], baseline) for c in keys}
-    heights = {c: h for c, h in heights.items() if h}
-    if not heights:
-        return dict(masters)
-    goal = target or int(np.median(list(heights.values())))
-    out = dict(masters)
-    for c, h in heights.items():
-        if abs(h - goal) <= goal * tolerance:
-            continue
-        out[c] = soften(scale(masters[c], goal / float(h), baseline, order=3), 0.6)
-    return out
+    keys = chars if chars else [c for c in masters if c.isupper()]
+    return normalise_height(masters, baseline, keys, target, tolerance)
+
+
+def add_dot_below(base: np.ndarray, period: np.ndarray, baseline: int,
+                  gap: float = 0.10, level: float = 0.5) -> np.ndarray:
+    """Put a baseline dot under a mark that lost one, and lift the mark clear.
+
+    The mirror of `add_tittle`, and it exists because segmentation loses these
+    dots systematically: mark re-attachment joins a small component to the
+    letter *below* it, which is right for an 'i' and wrong for a '?' or a ';',
+    whose dot sits underneath. Those come out of clustering as the hook alone.
+
+    The dot is the fount's own period, so nothing is drawn. The hook is raised
+    to make room for it -- without that it would sit on top of the dot, since a
+    hook that lost its dot still occupies the full height down to the baseline.
+    """
+    bb = ink_bbox(period, level)
+    if bb is None:
+        return base.copy()
+    dot_h = bb[1] - bb[0]
+    foot = foot_row(base, level)
+    if foot is None:
+        return base.copy()
+    lift = foot - (baseline - dot_h - int(gap * dot_h * 6))
+    hook = shift(base, -max(lift, 0), 0)
+
+    # Centre the dot under the hook's own lower stem.
+    h_cols = np.where((hook > level).any(axis=0))[0]
+    p_cols = np.where((period > level).any(axis=0))[0]
+    dx = 0.0
+    if len(h_cols) and len(p_cols):
+        dx = float(h_cols.mean() - p_cols.mean())
+    return union(hook, shift(period, 0, dx))

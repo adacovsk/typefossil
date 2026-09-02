@@ -191,3 +191,15 @@ def test_normalise_cap_height_shrinks_an_oversized_capital():
     out = compose.normalise_cap_height({"A": small, "B": small.copy(), "E": big}, 232)
     hs = [compose.cap_height(out[c], 232) for c in "ABE"]
     assert max(hs) - min(hs) <= 12
+
+
+def test_add_dot_below_lifts_the_mark_and_adds_a_dot():
+    from typefossil import compose
+    hook = np.zeros((300, 120)); hook[150:232, 40:70] = 1.0
+    period = np.zeros((300, 120)); period[215:232, 44:60] = 1.0
+    out = compose.add_dot_below(hook, period, 232)
+    # The dot keeps the period's own foot; the mark no longer defines the bottom.
+    assert compose.foot_row(out) == compose.foot_row(period)
+    rows = (out > 0.5).sum(axis=1)
+    band = [i for i in range(150, 233) if rows[i] == 0]
+    assert band                                   # a gap now separates the two
