@@ -93,6 +93,23 @@ specimen.sheet("MyRevival.ttf", "specimen.png")
 shipping a font with holes. A source that never prints arabic numerals will
 tell you so.
 
+`examples/kelmscott_troy.py` is the real recipe for the font in `fonts/` —
+three sources, the label step, and the corrections that only surface once you
+look at the whole character set together.
+
+## Expect to need more than one book
+
+A book is a sample of a fount, not an inventory of it, and the gaps are
+systematic rather than random. Kelmscott Troy needed three sources: a book set
+in the type for its lowercase, a book of *verse* for capitals (prose that opens
+chapters with woodcut initials barely prints them), and a technical treatise for
+`z` and the digits, because the literary text uses roman numerals throughout and
+Middle English hardly uses `z` at all.
+
+Plan for that. When your second source still leaves holes, the question to ask
+is which *kind* of text prints the missing characters — not how to squeeze more
+out of the pages you have.
+
 ## Provenance and licensing
 
 Two separate questions, and they have different answers.
