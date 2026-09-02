@@ -70,32 +70,41 @@ redrawing.
 
 ## What Kelmscott Troy contains, and what it does not
 
-Built from 67,110 glyph instances across 61 pages of Godefrey, plus 162,397
-instances across 48 pages of the Chaucer for the characters Godefrey lacks.
+Built from three sources, because no one of them prints the whole character set.
 
-**Present** (47): `a`–`z` except `z`, `A B E G H I J L M N O P S T W Y`, and
+| Source | Contributes | Instances |
+|---|---|---|
+| Godefrey of Boloyne (1893), Troy type | lowercase | 67,110 across 61 pages |
+| Kelmscott Chaucer (1896), Chaucer type | capitals | 162,397 across 48 pages |
+| Chaucer, *Treatise on the Astrolabe* | `z`, digits, remaining capitals | 95,415 across 29 pages |
+
+**Present** (58): `a`–`z`, `A B C E G H I J L M N O P S T V W Y`, `2`–`9`, and
 `, . ; ? - &`.
 
-**Absent, and why.** Every gap is a property of the corpus rather than of the
-pipeline, and each was searched for specifically:
+**Why three sources.** A book is a sample of a fount, not an inventory of it,
+and the gaps are systematic:
 
-- **`z`** — not found in any sampled page. The Chaucer's OCR reports `z` words
-  (`zodiak`, `azimut`, `Zephirus`), but blackletter OCR maps yogh and long-s to
-  `z`, so most of those are spurious; the genuinely `z`-bearing text was not in
-  the sampled range. Middle English uses the letter very rarely.
-- **Capitals `C D F K Q R U V X Z`** — Godefrey sets chapter openings as woodcut
-  initials rather than type, so its type capitals are scarce; the Chaucer
-  capitalises every verse line and supplied sixteen, but not these.
-- **Digits `0` and `3`** — the other eight come from Chaucer folio numbers, the
-  only arabic figures in the corpus. Folio numbers in the sampled range simply
-  did not yield a clean master for these two.
-- **`! " ' ( ) :`** — not observed in the sampled pages.
+- **`z`** is barely used in Middle English. It appears in the Astrolabe, whose
+  astronomical vocabulary carries *zodiak*, *azimut* and *zenith*, and
+  essentially nowhere else in the corpus.
+- **Arabic numerals** appear nowhere in Morris's literary text at all — he sets
+  roman numerals throughout. The Astrolabe is the exception, because it states
+  measurements: "in hir latitude of 2 degrees". Every digit in this font comes
+  from there.
+- **Capitals** are scarce in Godefrey, which opens chapters with woodcut
+  initials rather than type. The Chaucer is verse and capitalises every line.
 
-**The fix for all of these is more source, not more processing.** Each is a
-letter the sampled books do not print often enough. Kelmscott issued some fifty
-volumes in these two types; adding one more Troy-set book would likely close
-most of the capital gaps, and the Chaucer's glossary — alphabetical, so every
-initial appears — is the obvious target for the rest.
+Locating the Astrolabe was itself a search: the OCR reports `z` throughout the
+volume, but blackletter OCR maps yogh and long-s to `z`, so most of those are
+spurious. Mapping the genuine z-words to a fraction of the text, and that
+fraction to a leaf number, put it at leaves 414–442.
 
-Nothing in this font is composed or invented. Every glyph is traced from
-printed impressions of Morris's type.
+**Still absent**: `0`, `1`, and capitals `D F K Q R U X Z`; also `! " ' ( ) :`.
+Each is a letter the sampled pages do not print often enough to average a clean
+master from. The remedy is more source, not more processing — Kelmscott issued
+some fifty volumes in these two types.
+
+Nothing in this font is invented. Every glyph is traced from printed
+impressions of Morris's type. The one composed element is the tittle on `j`,
+which is `i`'s own dot from the same fount, restored because the `j` cluster
+averaged without it.
