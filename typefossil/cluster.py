@@ -109,3 +109,67 @@ def contact_sheet(avgs: dict[int, tuple], path: str, per_sheet: int = 60,
         canv.save(name)
         written.append(name)
     return written
+
+
+def sharpness(mask: np.ndarray) -> float:
+    """How binary a master is, in [0, 1].
+
+    An averaged master is crisp when its pixels are mostly ink or mostly paper
+    and blurred when many sit in between. Instances that agree average towards
+    0/1; instances that are misaligned -- or are not actually the same sort --
+    average towards grey.
+    """
+    return float(np.abs(2.0 * mask - 1.0).mean())
+
+
+def agreement(a: np.ndarray, b: np.ndarray) -> float:
+    """Correlation between two masters, as a merge test."""
+    x, y = a.ravel() - a.mean(), b.ravel() - b.mean()
+    d = float(np.linalg.norm(x) * np.linalg.norm(y))
+    return 0.0 if d == 0 else float((x @ y) / d)
+
+
+def merge_masters(masters: list[tuple[np.ndarray, int]],
+                  min_agreement: float = 0.93) -> np.ndarray:
+    """Combine clusters of the same character, but only those that agree.
+
+    More instances is not automatically a better master. k-means splits one
+    sort across several clusters, and it splits it by whatever varies most --
+    often ink weight or a slight skew, not identity. Averaging a crisp cluster
+    together with a misaligned one produces something blurrier than the crisp
+    cluster alone, which is a real quality regression and an easy one to miss.
+
+    So: anchor on the sharpest cluster, and fold in only those that correlate
+    with it above ``min_agreement``, weighted by instance count.
+    """
+    if not masters:
+        raise ValueError("no masters to merge")
+    anchor = max(masters, key=lambda mc: sharpness(mc[0]))[0]
+    keep = [(m, n) for m, n in masters if agreement(m, anchor) >= min_agreement]
+    if not keep:
+        return anchor
+    total = sum(n for _, n in keep)
+    return sum(m * n for m, n in keep) / total
+
+
+def confusions(masters: dict[str, np.ndarray], threshold: float = 0.97) -> list[tuple]:
+    """Pairs of characters whose masters are suspiciously alike.
+
+    Labelling is done by eye from a contact sheet, and at thumbnail size some
+    letters are genuinely hard to tell apart -- in a blackletter face 'b' and
+    'h' differ only in whether the bowl closes on the stem. Mislabelling one as
+    the other is silent: the font builds, every glyph looks plausible, and one
+    letter of the alphabet is simply wrong everywhere it appears.
+
+    Two *different* characters whose averaged masters correlate this highly are
+    almost certainly the same sort labelled twice. Returns the offending pairs,
+    worst first, for a human to re-check at full size.
+    """
+    keys = sorted(masters)
+    out = []
+    for i, a in enumerate(keys):
+        for b in keys[i + 1:]:
+            score = agreement(masters[a], masters[b])
+            if score >= threshold:
+                out.append((score, a, b))
+    return sorted(out, reverse=True)

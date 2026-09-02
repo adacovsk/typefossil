@@ -120,3 +120,22 @@ def test_align_left_moves_ink_to_the_requested_column():
     a = compose.align_left(m, x=4)
     cols = np.where((a > 0.5).any(axis=0))[0]
     assert abs(cols[0] - 4) <= 1
+
+
+def test_confusions_flags_two_labels_on_one_shape():
+    from typefossil import cluster
+    shape = disc()
+    other = np.zeros((60, 60))
+    other[10:50, 10:20] = 1.0
+    found = cluster.confusions({"b": shape, "h": shape.copy(), "l": other})
+    pairs = {tuple(sorted((a, b))) for _, a, b in found}
+    assert ("b", "h") in pairs
+    assert ("b", "l") not in pairs
+
+
+def test_merge_masters_prefers_a_sharp_master_over_a_populous_blurry_one():
+    from typefossil import cluster
+    sharp = disc()
+    blurry = sharp * 0.5 + 0.25
+    merged = cluster.merge_masters([(sharp, 10), (blurry, 500)])
+    assert cluster.sharpness(merged) > cluster.sharpness(blurry)
