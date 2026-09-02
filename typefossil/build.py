@@ -68,7 +68,7 @@ def _ink_columns(mask: np.ndarray, level: float = 0.5) -> tuple[int, int] | None
 
 def build(masters: dict[str, np.ndarray], design: Design,
           x_height_px: float, frame: Frame = Frame(),
-          tol: float | dict = 0.9) -> tuple:
+          tol: float | dict = 0.9, level: float | dict = 0.5) -> tuple:
     """Build a TTF from ``{character: averaged mask}``.
 
     ``x_height_px`` is the measured x-height of the source in frame pixels; it
@@ -82,6 +82,14 @@ def build(masters: dict[str, np.ndarray], design: Design,
     faithfully; a capital built from a few hundred still carries the roughness
     of individual impressions, and the same tight tolerance faithfully
     reproduces *that*, as visible wobble along every edge.
+
+    ``level`` is the ink threshold the outline is taken at, and may also be a
+    dict keyed by character. A master averaged from few impressions has a lower
+    mean ink value everywhere, because no single impression is inked
+    identically; the 0.5 contour then cuts *inside* the true outline and a thin
+    stroke can drop out of it altogether, breaking a bowl open. Lowering the
+    level for such a glyph recovers the stroke rather than thickening the
+    letter.
     """
     m = design.metrics
     scale = (m.upm * m.x_height_ratio) / x_height_px
@@ -90,7 +98,8 @@ def build(masters: dict[str, np.ndarray], design: Design,
     glyphs: dict[str, object] = {}
     widths: dict[str, int] = {}
     for ch, mask in sorted(masters.items()):
-        span = _ink_columns(mask)
+        lv = level.get(ch, 0.5) if isinstance(level, dict) else level
+        span = _ink_columns(mask, lv)
         if span is None:
             continue
         c0, c1 = span
@@ -102,7 +111,7 @@ def build(masters: dict[str, np.ndarray], design: Design,
 
         pen = TTGlyphPen(None)
         t = tol.get(ch, 0.9) if isinstance(tol, dict) else tol
-        paths = trace.outline(mask, xf, tol=t)
+        paths = trace.outline(mask, xf, tol=t, level=lv)
         if not paths:
             continue
         trace.draw(pen, paths)

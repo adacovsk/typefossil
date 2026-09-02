@@ -203,3 +203,15 @@ def test_add_dot_below_lifts_the_mark_and_adds_a_dot():
     rows = (out > 0.5).sum(axis=1)
     band = [i for i in range(150, 233) if rows[i] == 0]
     assert band                                   # a gap now separates the two
+
+
+def test_seat_masters_leaves_old_style_figures_below_the_line():
+    """Troy's figures are old-style: 4 5 7 9 descend and must keep doing so."""
+    from typefossil import compose
+    body = np.zeros((300, 120)); body[150:232, 20:80] = 1.0
+    four = np.zeros((300, 120))
+    four[150:232, 20:80] = 1.0
+    four[232:270, 30:60] = 1.0                      # descends past the baseline
+    desc = compose.DESCENDERS | compose.OLDSTYLE_DESCENDING_FIGURES
+    seated = compose.seat_masters({"n": body, "4": four}, 232, 82, descenders=desc)
+    assert compose.foot_row(seated["4"]) > 232

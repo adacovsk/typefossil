@@ -167,6 +167,15 @@ def weight(mask: np.ndarray, amount: int) -> np.ndarray:
 #: the bitmap -- see `seat_masters` for why inferring it does not work.
 DESCENDERS = set("gjpqy")
 
+#: Old-style (text) figures do not align on a common height: some sit at
+#: x-height, some ascend, some descend. Troy's do exactly this -- '2' and '3'
+#: at x-height, '6' and '8' ascending, '4' '5' '7' '9' descending -- and it is
+#: the design rather than a defect. Normalising them to one height, or seating
+#: the descending ones on the baseline, destroys it. Add these to the descender
+#: set when seating, and leave figure heights alone.
+OLDSTYLE_DESCENDING_FIGURES = set("4579")
+OLDSTYLE_ASCENDING_FIGURES = set("68")
+
 
 def foot_row(mask: np.ndarray, level: float = 0.5) -> int | None:
     """The lowest row carrying ink. For a non-descender this is the baseline."""
@@ -198,7 +207,7 @@ def _best_shift(mask: np.ndarray, reference: np.ndarray, lo: int, hi: int,
 
 
 def seat_masters(masters: dict, baseline: int, x_height: int,
-                 descenders: set | None = None) -> dict:
+                 descenders: set | None = None, leave: set | None = None) -> dict:
     """Seat every master on a common baseline.
 
     Per-line baseline estimates drift, and clustering preserves the drift
@@ -220,9 +229,10 @@ def seat_masters(masters: dict, baseline: int, x_height: int,
     and the tail below is simply not consulted.
     """
     descenders = DESCENDERS if descenders is None else descenders
-    seated = {}
+    leave = leave or set()
+    seated = {ch: masters[ch].copy() for ch in leave if ch in masters}
     for ch, m in masters.items():
-        if ch in descenders:
+        if ch in descenders or ch in leave:
             continue
         foot = foot_row(m)
         seated[ch] = m.copy() if foot is None else shift(m, baseline - foot, 0)
@@ -232,7 +242,7 @@ def seat_masters(masters: dict, baseline: int, x_height: int,
     reference = sum(seated.values()) / len(seated)
     lo, hi = max(0, baseline - x_height), baseline + 1
     for ch, m in masters.items():
-        if ch not in descenders:
+        if ch not in descenders or ch in leave:
             continue
         seated[ch] = shift(m, _best_shift(m, reference, lo, hi), 0)
     return seated

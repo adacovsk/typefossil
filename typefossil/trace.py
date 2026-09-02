@@ -120,7 +120,7 @@ def _split_fit(pts: np.ndarray, tol: float, depth: int = 0) -> list[tuple]:
 
 
 def outline(mask: np.ndarray, transform, tol: float = 0.9,
-            simplify: float = 1.0) -> list[list[tuple]]:
+            simplify: float = 1.0, level: float = 0.5) -> list[list[tuple]]:
     """Fitted contours of ``mask`` in font units.
 
     ``transform`` maps a source-pixel (x, y) to font units. Returns a list of
@@ -128,7 +128,7 @@ def outline(mask: np.ndarray, transform, tol: float = 0.9,
     segments following an initial ``("move", pt)``.
     """
     paths = []
-    for poly in contours(mask):
+    for poly in contours(mask, level):
         if np.allclose(poly[0], poly[-1]):
             poly = poly[:-1]
         poly = _resample(poly, simplify)
