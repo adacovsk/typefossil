@@ -101,22 +101,30 @@ fraction to a leaf number, put it at leaves 414–442.
 
 **Still absent**: `0`, `1`, capitals `C F K Q R U X Z`, and `! " ' ( ) :`.
 
-These were searched for hard rather than assumed missing. The corpus sampled is
-185 pages of Godefrey and 128 of the Chaucer -- roughly 370,000 glyph instances
--- and none of them contains these characters in usable form. A later pass
-added 124 further Godefrey pages specifically hunting the capitals and found
-none; its few capital clusters were blurrier than the Chaucer ones already in
-the font and were discarded rather than allowed to regress it.
+These were searched for rather than assumed missing. Four Kelmscott volumes were
+processed -- roughly 400,000 glyph instances in all:
 
-The reason is the text, not the sampling. Godefrey opens chapters with woodcut
-initials rather than type, so it prints few capitals at all; the Chaucer's verse
-capitals are frequent but follow the distribution of words that begin lines of
-Middle English poetry, in which `Q`, `X` and `Z` scarcely appear. `0` and `1`
-are absent for the same reason as the other digits nearly were -- arabic figures
-occur only in the Astrolabe -- and those two simply did not recur often enough
-there to average a clean master.
+| Volume | Type | Result for the missing set |
+|---|---|---|
+| Godefrey of Boloyne, 185 pages | Troy | none; a targeted 124-page second pass found nothing |
+| Kelmscott Chaucer, 128 pages | Chaucer | none |
+| Treatise on the Astrolabe, 29 pages | Chaucer | supplied `z` and `2`-`9`; not these |
+| Amis and Amile, 71 pages | Troy | only capitals already held (A D H O T) |
 
-Nothing in this font is invented. Every glyph is traced from printed
-impressions of Morris's type. The one composed element is the tittle on `j`,
-which is `i`'s own dot from the same fount, restored because the `j` cluster
-averaged without it.
+The limit is the text rather than the sampling, which is why more pages do not
+help. Godefrey opens chapters with woodcut initials and prints few capitals as
+type at all. The Chaucer's capitals are plentiful but distributed as the first
+letters of Middle English verse lines, where `Q`, `X` and `Z` scarcely occur.
+And arabic figures exist nowhere in Morris's literary text -- only the Astrolabe
+states measurements -- so `0` and `1` had one narrow source and did not recur in
+it often enough to average a clean master.
+
+Completing the set means either a volume whose subject matter uses those
+letters, or drawing them. This font does not draw them.
+
+Nothing in this font is drawn. Every glyph is traced from printed impressions
+of Morris's type. Two dots are reconstructed rather than traced, and both use
+the fount's own marks: the tittle on `j` is `i`'s dot, and the dot under `?` is
+the period. Both are lost to segmentation rather than absent from the page --
+mark re-attachment joins a small component to the letter below it, which is
+right for `i` and wrong for `?`.
