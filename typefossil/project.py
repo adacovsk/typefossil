@@ -51,3 +51,40 @@ class Project:
         raw = json.loads(Path(path).read_text())
         raw["sources"] = [Source(**s) for s in raw.get("sources", [])]
         return cls(**raw)
+
+
+def save_masters(masters: dict, path: str, meta: dict | None = None) -> None:
+    """Store labelled glyph masters as a compressed archive.
+
+    Cluster ids are positional: change ``k``, the seed, or the page set and
+    every id means something else, so a label map keyed by id is only valid for
+    the exact run that produced it. The masters themselves have no such problem.
+    Saving them is what makes a font rebuildable -- retracing, remetricking or
+    renaming it costs seconds and needs none of the segmentation, clustering or
+    labelling to be repeated.
+    """
+    import json as _json
+
+    import numpy as np
+
+    payload = {f"glyph_{ord(ch):04X}": m.astype(np.float32) for ch, m in masters.items()}
+    payload["__chars__"] = np.array(
+        [ord(ch) for ch in sorted(masters)], dtype=np.int32
+    )
+    payload["__meta__"] = np.frombuffer(
+        _json.dumps(meta or {}).encode("utf-8"), dtype=np.uint8
+    )
+    np.savez_compressed(path, **payload)
+
+
+def load_masters(path: str) -> tuple[dict, dict]:
+    """Read back ``save_masters``. Returns ``(masters, meta)``."""
+    import json as _json
+
+    import numpy as np
+
+    z = np.load(path)
+    chars = [chr(c) for c in z["__chars__"]]
+    masters = {ch: z[f"glyph_{ord(ch):04X}"] for ch in chars}
+    meta = _json.loads(bytes(z["__meta__"]).decode("utf-8")) if "__meta__" in z else {}
+    return masters, meta

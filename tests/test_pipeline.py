@@ -139,3 +139,33 @@ def test_merge_masters_prefers_a_sharp_master_over_a_populous_blurry_one():
     blurry = sharp * 0.5 + 0.25
     merged = cluster.merge_masters([(sharp, 10), (blurry, 500)])
     assert cluster.sharpness(merged) > cluster.sharpness(blurry)
+
+
+def test_masters_round_trip_through_the_archive(tmp_path=None):
+    import pathlib, tempfile
+    from typefossil import project
+    tmp_path = pathlib.Path(tmp_path or tempfile.mkdtemp())
+    masters = {"a": disc(), "B": disc(40, 12), ".": disc(20, 5)}
+    out = tmp_path / "m.npz"
+    project.save_masters(masters, str(out), meta={"source": "test"})
+    back, meta = project.load_masters(str(out))
+    assert sorted(back) == sorted(masters)
+    assert meta["source"] == "test"
+    assert np.allclose(back["a"], masters["a"])
+
+
+def test_baseline_row_ignores_a_descender():
+    from typefossil import compose
+    body = np.zeros((300, 120))
+    body[100:180, 20:80] = 1.0
+    with_tail = body.copy()
+    with_tail[180:250, 35:50] = 1.0
+    assert compose.baseline_row(body) == compose.baseline_row(with_tail)
+
+
+def test_snap_baseline_seats_a_high_glyph():
+    from typefossil import compose
+    m = np.zeros((300, 120))
+    m[60:140, 20:80] = 1.0            # sits well above the baseline
+    s = compose.snap_baseline(m, 232)
+    assert abs(compose.baseline_row(s) - 232) <= 1

@@ -85,17 +85,34 @@ def descender_from(donor: np.ndarray, baseline: int, dx: int = 0) -> np.ndarray:
     return shift(below(donor, baseline), 0, dx)
 
 
+def _ink_centre_at(mask: np.ndarray, row: int, level: float = 0.5,
+                   band: int = 6) -> float | None:
+    """Horizontal centre of the ink crossing a given row."""
+    lo, hi = max(0, row - band), min(mask.shape[0], row + band + 1)
+    cols = np.where((mask[lo:hi] > level).any(axis=0))[0]
+    return float(cols.mean()) if len(cols) else None
+
+
 def compose_j(i_mask: np.ndarray, donor: np.ndarray, baseline: int,
-              dx: int = 0, dy: int = 0) -> np.ndarray:
-    """Build 'j' from 'i' plus a descender.
+              dx: int = 0, dy: int = 0, overlap: int = 8) -> np.ndarray:
+    """Build 'j' from 'i' plus a descender lifted from another letter.
 
     Not an invention: 'j' *is* a descending 'i'. It entered the alphabet as a
-    swash variant of 'i' and only became a separate letter later, which is
+    swash variant of 'i' and became a separate letter only later, which is
     exactly why a Middle English fount has no separate sort for it. Grafting
-    the tail of an existing descender onto the 'i' stem reconstructs the letter
-    the punchcutter would have cut, in the hand he actually cut.
+    an existing tail onto the 'i' stem reconstructs the letter in the hand the
+    punchcutter actually cut, rather than drawing a new one.
+
+    The tail is aligned automatically: its ink at the baseline is centred under
+    the stem's ink at the baseline, and it is lifted by ``overlap`` rows so the
+    two actually meet. Without that the tail floats free of the stem, which is
+    what a naive union produces.
     """
-    tail = shift(below(donor, baseline), dy, dx)
+    stem_c = _ink_centre_at(i_mask, baseline - 4)
+    tail = below(donor, baseline - overlap)
+    tail_c = _ink_centre_at(tail, baseline)
+    auto_dx = 0.0 if (stem_c is None or tail_c is None) else stem_c - tail_c
+    tail = shift(tail, dy - overlap, auto_dx + dx)
     return union(i_mask, tail)
 
 
@@ -125,3 +142,37 @@ def weight(mask: np.ndarray, amount: int) -> np.ndarray:
         return mask.copy()
     op = ndimage.grey_dilation if amount > 0 else ndimage.grey_erosion
     return op(mask, size=(abs(amount) * 2 + 1, abs(amount) * 2 + 1))
+
+
+def baseline_row(mask: np.ndarray, level: float = 0.5,
+                 width_frac: float = 0.55) -> int | None:
+    """Estimate where a glyph actually sits on the baseline.
+
+    Not simply the lowest ink: that is wrong for every descender. It is the
+    lowest row at which the glyph is still *wide* -- the bottom of the bowl or
+    the feet -- because a descender's tail is narrow relative to its body. For
+    a letter with no descender the two coincide, so one rule covers both.
+    """
+    ink = mask > level
+    widths = ink.sum(axis=1)
+    if not widths.any():
+        return None
+    rows = np.where(widths >= widths.max() * width_frac)[0]
+    return int(rows[-1]) if len(rows) else None
+
+
+def snap_baseline(mask: np.ndarray, baseline: int, **kw) -> np.ndarray:
+    """Move a master so it sits on the baseline.
+
+    Per-line baseline estimates come from the median of component bottoms and
+    are only as good as the line: a line heavy with descenders, or two lines
+    merged by the line finder, pulls the estimate off. The error survives
+    clustering -- k-means happily splits one letter into a high group and a low
+    group, since vertical offset is exactly the kind of variation it keys on --
+    and then the letter rides high or low in the finished font. Re-seating each
+    finished master on its own measured baseline removes the whole class.
+    """
+    row = baseline_row(mask, **kw)
+    if row is None:
+        return mask.copy()
+    return shift(mask, baseline - row, 0)
