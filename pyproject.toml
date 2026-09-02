@@ -1,0 +1,26 @@
+[project]
+name = "typefossil"
+version = "0.1.0"
+description = "Recover a working digital typeface from photographs of a printed book"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "AGPL-3.0-or-later" }
+authors = [{ name = "Adam Acovski" }]
+keywords = ["typeface", "font", "digitisation", "letterpress", "revival"]
+dependencies = [
+    "numpy>=1.24",
+    "scipy>=1.10",
+    "pillow>=10.0",
+    "matplotlib>=3.6",
+    "fonttools>=4.40",
+]
+
+[project.urls]
+Homepage = "https://github.com/adacovsk/typefossil"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["typefossil"]
