@@ -67,3 +67,35 @@ contract regardless of the underlying design being public domain. Working from
 the printed page avoids the question entirely, and produces a better result: the
 1896 press sheets are a closer record of the punches than anyone's 2000s
 redrawing.
+
+## What Kelmscott Troy contains, and what it does not
+
+Built from 67,110 glyph instances across 61 pages of Godefrey, plus 162,397
+instances across 48 pages of the Chaucer for the characters Godefrey lacks.
+
+**Present** (47): `a`–`z` except `z`, `A B E G H I J L M N O P S T W Y`, and
+`, . ; ? - &`.
+
+**Absent, and why.** Every gap is a property of the corpus rather than of the
+pipeline, and each was searched for specifically:
+
+- **`z`** — not found in any sampled page. The Chaucer's OCR reports `z` words
+  (`zodiak`, `azimut`, `Zephirus`), but blackletter OCR maps yogh and long-s to
+  `z`, so most of those are spurious; the genuinely `z`-bearing text was not in
+  the sampled range. Middle English uses the letter very rarely.
+- **Capitals `C D F K Q R U V X Z`** — Godefrey sets chapter openings as woodcut
+  initials rather than type, so its type capitals are scarce; the Chaucer
+  capitalises every verse line and supplied sixteen, but not these.
+- **Digits `0` and `3`** — the other eight come from Chaucer folio numbers, the
+  only arabic figures in the corpus. Folio numbers in the sampled range simply
+  did not yield a clean master for these two.
+- **`! " ' ( ) :`** — not observed in the sampled pages.
+
+**The fix for all of these is more source, not more processing.** Each is a
+letter the sampled books do not print often enough. Kelmscott issued some fifty
+volumes in these two types; adding one more Troy-set book would likely close
+most of the capital gaps, and the Chaucer's glossary — alphabetical, so every
+initial appears — is the obvious target for the rest.
+
+Nothing in this font is composed or invented. Every glyph is traced from
+printed impressions of Morris's type.
