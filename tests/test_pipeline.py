@@ -90,3 +90,33 @@ def test_kmeans_returns_one_label_per_point():
         lab = cluster.kmeans(P, k)
         assert lab.shape == (40,)
         assert lab.min() >= 0 and lab.max() < k
+
+
+def test_compose_j_adds_a_descender_below_the_baseline():
+    from typefossil import compose
+    base = np.zeros((120, 60))
+    base[40:70, 25:35] = 1.0          # an 'i'-like stem, sitting on row 70
+    donor = np.zeros((120, 60))
+    donor[40:95, 20:30] = 1.0         # a descending letter
+    j = compose.compose_j(base, donor, baseline=70)
+    assert (j[:70] > 0.5).any()       # keeps the stem
+    assert (j[70:] > 0.5).any()       # gains a tail
+    assert not (base[70:] > 0.5).any()  # and the donor was not mutated
+
+
+def test_scale_preserves_the_baseline():
+    from typefossil import compose
+    m = np.zeros((120, 60))
+    m[50:70, 20:40] = 1.0             # ink resting on row 70
+    s = compose.scale(m, 1.4, baseline=70)
+    rows = np.where((s > 0.5).any(axis=1))[0]
+    assert abs(rows[-1] + 1 - 70) <= 2
+
+
+def test_align_left_moves_ink_to_the_requested_column():
+    from typefossil import compose
+    m = np.zeros((40, 40))
+    m[10:20, 25:30] = 1.0
+    a = compose.align_left(m, x=4)
+    cols = np.where((a > 0.5).any(axis=0))[0]
+    assert abs(cols[0] - 4) <= 1
