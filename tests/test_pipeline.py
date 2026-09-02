@@ -215,3 +215,28 @@ def test_seat_masters_leaves_old_style_figures_below_the_line():
     desc = compose.DESCENDERS | compose.OLDSTYLE_DESCENDING_FIGURES
     seated = compose.seat_masters({"n": body, "4": four}, 232, 82, descenders=desc)
     assert compose.foot_row(seated["4"]) > 232
+
+
+def test_specimen_omits_characters_the_font_lacks(tmp_path=None):
+    import pathlib, tempfile
+    from typefossil import build, specimen
+    tmp_path = pathlib.Path(tmp_path or tempfile.mkdtemp())
+    fb, _ = build.build({c: disc() for c in "abc"}, build.Design(family="T"),
+                        x_height_px=20.0)
+    out = tmp_path / "T.ttf"
+    fb.save(str(out))
+    have = specimen._available(str(out))
+    assert specimen._fits("abcxyz", have) == "abc"
+
+
+def test_full_sheet_does_not_mangle_a_name_it_cannot_set(tmp_path=None):
+    """A proof may omit characters; the name of the thing being proofed may not."""
+    import pathlib, tempfile
+    from typefossil import build, specimen
+    tmp_path = pathlib.Path(tmp_path or tempfile.mkdtemp())
+    fb, _ = build.build({c: disc() for c in "abce"}, build.Design(family="T"),
+                        x_height_px=20.0)
+    out = tmp_path / "T.ttf"
+    fb.save(str(out))
+    png = specimen.full_sheet(str(out), str(tmp_path / "s.png"), family="Kelmscott")
+    assert pathlib.Path(png).exists()
