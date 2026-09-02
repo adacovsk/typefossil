@@ -68,12 +68,20 @@ def _ink_columns(mask: np.ndarray, level: float = 0.5) -> tuple[int, int] | None
 
 def build(masters: dict[str, np.ndarray], design: Design,
           x_height_px: float, frame: Frame = Frame(),
-          tol: float = 0.9) -> tuple:
+          tol: float | dict = 0.9) -> tuple:
     """Build a TTF from ``{character: averaged mask}``.
 
     ``x_height_px`` is the measured x-height of the source in frame pixels; it
     sets the single scale factor from scan space to font units, so every glyph
     keeps the proportions it had on the page.
+
+    ``tol`` is how closely the fitted outline follows the master's contour, and
+    it may be a dict keyed by character. One value rarely suits a whole font:
+    masters differ enormously in how many impressions they average. A lowercase
+    letter built from thousands is smooth, and a tight tolerance reproduces it
+    faithfully; a capital built from a few hundred still carries the roughness
+    of individual impressions, and the same tight tolerance faithfully
+    reproduces *that*, as visible wobble along every edge.
     """
     m = design.metrics
     scale = (m.upm * m.x_height_ratio) / x_height_px
@@ -93,7 +101,8 @@ def build(masters: dict[str, np.ndarray], design: Design,
             return ((x - _c0) * scale + sb, (frame.baseline - y) * scale)
 
         pen = TTGlyphPen(None)
-        paths = trace.outline(mask, xf, tol=tol)
+        t = tol.get(ch, 0.9) if isinstance(tol, dict) else tol
+        paths = trace.outline(mask, xf, tol=t)
         if not paths:
             continue
         trace.draw(pen, paths)

@@ -23,20 +23,25 @@ def shift(mask: np.ndarray, dy: int = 0, dx: int = 0) -> np.ndarray:
     return ndimage.shift(mask, (dy, dx), order=1, mode="constant", cval=0.0)
 
 
-def scale(mask: np.ndarray, factor: float, baseline: int) -> np.ndarray:
+def scale(mask: np.ndarray, factor: float, baseline: int, order: int = 3) -> np.ndarray:
     """Scale about the baseline, keeping the frame size.
 
     Used to bring a master from a smaller cut of the same design onto the
-    primary size. It is a starting point and not a finished answer: a smaller
-    cut is optically heavier, so a purely geometric scale comes out too bold.
+    primary size. Cubic by default: an averaged master is a smooth greyscale
+    field, and resampling it linearly leaves stair-stepping along every
+    diagonal that the outline fitter then faithfully reproduces as a jagged
+    edge. The cost of the higher order is nothing at this size.
+
+    It remains a starting point rather than a finished answer: a smaller cut of
+    a face is optically heavier, so a purely geometric scale still comes out
+    slightly too bold.
     """
     if abs(factor - 1.0) < 1e-6:
         return mask.copy()
     h, w = mask.shape
-    zoomed = ndimage.zoom(mask, factor, order=1)
+    zoomed = np.clip(ndimage.zoom(mask, factor, order=order), 0.0, 1.0)
     out = np.zeros_like(mask)
     zh, zw = zoomed.shape
-    # Align the baseline row of the scaled image with the frame's baseline.
     src_base = int(round(baseline * factor))
     top = baseline - src_base
     src_r0, dst_r0 = (0, top) if top >= 0 else (-top, 0)
@@ -46,6 +51,19 @@ def scale(mask: np.ndarray, factor: float, baseline: int) -> np.ndarray:
         return out
     out[dst_r0:dst_r0 + n_r, :n_c] = zoomed[src_r0:src_r0 + n_r, :n_c]
     return out
+
+
+def soften(mask: np.ndarray, sigma: float = 0.8) -> np.ndarray:
+    """Light Gaussian blur, to take the stair-steps off a resampled master.
+
+    The outline fitter works on the 0.5 contour of a greyscale field, so it
+    reproduces whatever roughness that field has. A master built from few
+    instances -- capitals, which are far rarer than lowercase -- has not had
+    that roughness averaged away, and it surfaces as visible aliasing along the
+    edges of the finished glyph. A sub-pixel blur removes it without moving the
+    contour, since blurring is symmetric about the 0.5 level.
+    """
+    return ndimage.gaussian_filter(mask, sigma)
 
 
 def union(*masks: np.ndarray) -> np.ndarray:
@@ -233,3 +251,38 @@ def snap_baseline(mask: np.ndarray, baseline: int, **kw) -> np.ndarray:
     if row is None:
         return mask.copy()
     return shift(mask, baseline - row, 0)
+
+
+def tittle_of(donor: np.ndarray, x_height_top: int, level: float = 0.5) -> np.ndarray:
+    """The dot of an 'i', isolated: everything above the x-height."""
+    out = np.zeros_like(donor)
+    out[:x_height_top] = donor[:x_height_top]
+    return out
+
+
+def add_tittle(base: np.ndarray, donor: np.ndarray, x_height_top: int,
+               level: float = 0.5) -> np.ndarray:
+    """Give a glyph the dot from another, centred over its own stem.
+
+    'j' is the case this exists for. Its dot is small, and it is the part of the
+    letter most often broken, filled or lost to a neighbouring line in a scan,
+    so a 'j' cluster can average out to a clean stem with no dot at all even
+    when the printed letter plainly has one. Lifting the tittle from 'i' -- the
+    same sort's dot, from the same fount -- restores it without drawing
+    anything new.
+
+    Alignment is over the stem rather than the bounding box: 'j' curves left
+    below the baseline, so its box centre sits left of the stem the dot belongs
+    over.
+    """
+    dot = tittle_of(donor, x_height_top, level)
+    if not (dot > level).any():
+        return base.copy()
+    # Centre both on their x-height stem, not on the whole glyph.
+    band = slice(x_height_top, x_height_top + max(8, (base.shape[0] - x_height_top) // 6))
+    b_cols = np.where((base[band] > level).any(axis=0))[0]
+    d_cols = np.where((donor[band] > level).any(axis=0))[0]
+    dx = 0.0
+    if len(b_cols) and len(d_cols):
+        dx = float(b_cols.mean() - d_cols.mean())
+    return union(base, shift(dot, 0, dx))

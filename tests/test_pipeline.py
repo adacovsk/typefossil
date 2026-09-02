@@ -172,3 +172,13 @@ def test_seat_masters_keeps_a_descender_below_the_line():
     seated = compose.seat_masters({"n": body, "p": desc}, baseline=232, x_height=82)
     assert compose.foot_row(seated["n"]) == 232
     assert compose.foot_row(seated["p"]) > 232      # tail still hangs
+
+
+def test_build_accepts_per_glyph_tolerance():
+    from typefossil import build
+    masters = {"a": disc(), "B": disc()}
+    fb, _ = build.build(masters, build.Design(family="T"), x_height_px=20.0,
+                        tol={"a": 0.5, "B": 2.0})
+    glyf = fb.font["glyf"]
+    # A looser tolerance must not produce more points than a tight one.
+    assert len(glyf["B"].coordinates) <= len(glyf["a"].coordinates)
