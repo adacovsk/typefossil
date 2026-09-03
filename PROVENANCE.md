@@ -99,25 +99,26 @@ volume, but blackletter OCR maps yogh and long-s to `z`, so most of those are
 spurious. Mapping the genuine z-words to a fraction of the text, and that
 fraction to a leaf number, put it at leaves 414–442.
 
-**Still absent**: `0`, `1`, capitals `C F K Q R U X Z`, and `! " ' ( ) :`.
+**Still absent**: `0`, `1`, capitals `F K Q U X Z`, and `! " ' ( ) :`.
 
-These were searched for rather than assumed missing. Four Kelmscott volumes were
-processed -- roughly 400,000 glyph instances in all:
+A fifth pass recovered `C` and `R`, and the way it did so corrected an earlier
+conclusion. The Internet Archive's OCR is a transcription aligned to the print,
+and searching it showed the missing letters *are* in the book -- `Quod` appears
+112 times, `Knyghtes` and `Upon`/`Unto` throughout -- which contradicted the
+finding that the corpus lacked them. Mapping those words' text offsets to leaf
+numbers located the pages, and 108 of them were fetched and processed.
 
-| Volume | Type | Result for the missing set |
-|---|---|---|
-| Godefrey of Boloyne, 185 pages | Troy | none; a targeted 124-page second pass found nothing |
-| Kelmscott Chaucer, 128 pages | Chaucer | none |
-| Treatise on the Astrolabe, 29 pages | Chaucer | supplied `z` and `2`-`9`; not these |
-| Amis and Amile, 71 pages | Troy | only capitals already held (A D H O T) |
+The first attempt on those pages still found nothing, and the reason was
+resolution rather than absence: at 323,000 instances against 700 clusters the
+average cluster holds 460 impressions, so a capital printed a hundred times is
+absorbed into a larger lookalike instead of forming its own cluster. Filtering
+to cap-shaped instances first -- 107,648 of the 323,252 -- let the same cluster
+budget resolve `C` (96 impressions) and `R` (155).
 
-The limit is the text rather than the sampling, which is why more pages do not
-help. Godefrey opens chapters with woodcut initials and prints few capitals as
-type at all. The Chaucer's capitals are plentiful but distributed as the first
-letters of Middle English verse lines, where `Q`, `X` and `Z` scarcely occur.
-And arabic figures exist nowhere in Morris's literary text -- only the Astrolabe
-states measurements -- so `0` and `1` had one narrow source and did not recur in
-it often enough to average a clean master.
+Read the OCR carefully before trusting its counts. It maps Troy's `T` to `C`,
+`H` to `R` and `I` to `X`, so 10,218 apparent `C` hits are mostly *That* and
+*The*, and 611 apparent `X` hits are *Into* and *I yow*. The counts that
+survive that filter -- `Quod`, `Knyghtes`, `Zephirus` -- are the real ones.
 
 Completing the set means either a volume whose subject matter uses those
 letters, or drawing them. This font does not draw them.
