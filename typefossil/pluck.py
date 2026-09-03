@@ -102,3 +102,45 @@ def align_and_average(frames, level: float = 0.5, limit: int = 12):
                     best, best_score = (dy, dx), s
         out.append(ndimage.shift(f, best, order=1, cval=0.0))
     return np.mean(out, axis=0)
+
+
+def split_touching(frame, keep: str = "left", level: float = 0.5,
+                   max_erosion: int = 14):
+    """Separate two touching letters and return one of them.
+
+    Metal type sets tightly, and adjacent letters often share ink -- Troy's
+    display capitals do it constantly, so 'FI' in a heading comes back from
+    connected-component analysis as a single glyph. Cutting the component at a
+    column is not a fix: it leaves a straight vertical edge that exists nowhere
+    in the type, and the enclosed white shape that looks like the letter's
+    counter is really the gap between the two letters.
+
+    Erosion finds the true boundary instead. Thinning the shape breaks the
+    narrow bridge between the letters before it breaks either letter; at that
+    point they are separate components, and dilating the one you want back by
+    the same amount -- intersected with the original ink -- restores its own
+    outline, bridge excluded.
+    """
+    import numpy as np
+    from scipy import ndimage
+
+    ink = frame > level
+    for n in range(1, max_erosion + 1):
+        eroded = ndimage.binary_erosion(ink, iterations=n)
+        lbl, count = ndimage.label(eroded)
+        if count < 2:
+            continue
+        sizes = np.asarray(ndimage.sum(eroded, lbl, range(1, count + 1)))
+        order = np.argsort(sizes)[::-1]
+        # Both halves must be substantial. Erosion sheds specks off a serif long
+        # before it breaks the bridge, and taking the first split that appears
+        # returns a five-pixel crumb.
+        if len(order) < 2 or sizes[order[1]] < 0.20 * sizes[order[0]]:
+            continue
+        big = [int(i) + 1 for i in order[:2]]
+        centres = {i: ndimage.center_of_mass(lbl == i)[1] for i in big}
+        want = min(centres, key=centres.get) if keep == "left" else max(centres, key=centres.get)
+        piece = ndimage.binary_dilation(lbl == want, iterations=n + 1) & ink
+        out = np.where(piece, frame, 0.0).astype(np.float32)
+        return out, n
+    return frame.copy(), 0

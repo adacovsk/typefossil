@@ -99,29 +99,24 @@ volume, but blackletter OCR maps yogh and long-s to `z`, so most of those are
 spurious. Mapping the genuine z-words to a fraction of the text, and that
 fraction to a leaf number, put it at leaves 414–442.
 
-**Still absent**: `0`, `1`, capitals `F K Q U X Z`, and `! " ' ( ) :`.
+**Still absent**: capital `X`, and `! " ' ( ) :`.
 
-A fifth pass recovered `C` and `R`, and the way it did so corrected an earlier
-conclusion. The Internet Archive's OCR is a transcription aligned to the print,
-and searching it showed the missing letters *are* in the book -- `Quod` appears
-112 times, `Knyghtes` and `Upon`/`Unto` throughout -- which contradicted the
-finding that the corpus lacked them. Mapping those words' text offsets to leaf
-numbers located the pages, and 108 of them were fetched and processed.
+Capital `X` is not printed in this volume, and that was established rather than
+assumed. Roman numerals were the obvious hope -- `X` is ten -- but the book's
+numbering never reaches it in a form that survives: Boece and Troilus run Books
+I-V, and the Astrolabe numbers its forty-odd conclusions in *arabic* figures,
+which is where this font's digits come from. Middle English has no `X`-initial
+words. Every apparent `X` in the OCR is an `I` misread: the running head the
+transcription gives as "Book XX" reads **Book II** on the page.
 
-The first attempt on those pages still found nothing, and the reason was
-resolution rather than absence: at 323,000 instances against 700 clusters the
-average cluster holds 460 impressions, so a capital printed a hundred times is
-absorbed into a larger lookalike instead of forming its own cluster. Filtering
-to cap-shaped instances first -- 107,648 of the 323,252 -- let the same cluster
-budget resolve `C` (96 impressions) and `R` (155).
-
-Read the OCR carefully before trusting its counts. It maps Troy's `T` to `C`,
-`H` to `R` and `I` to `X`, so 10,218 apparent `C` hits are mostly *That* and
-*The*, and 611 apparent `X` hits are *Into* and *I yow*. The counts that
-survive that filter -- `Quod`, `Knyghtes`, `Zephirus` -- are the real ones.
-
-Completing the set means either a volume whose subject matter uses those
-letters, or drawing them. This font does not draw them.
+Capital `F` took two attempts and the first was wrong. Troy sets a lowercase `f`
+even at the start of a line -- "ful sykerly they slepten" -- so the capital
+occurs almost nowhere in body text, and the only instances are in the display
+heading of the Canterbury Tales opening. The `F` of "AND FIRST" is *fused to the
+following `I`*, and connected-component analysis returns them as one glyph: the
+enclosed white shape that reads as the letter's counter is really the gap
+between F and I. That version shipped briefly and was wrong. The `F` of
+"THEREOF" at the end of the same heading is isolated, and is the one in the font.
 
 Nothing in this font is drawn. Every glyph is traced from printed impressions
 of Morris's type. Two dots are reconstructed rather than traced, and both use
