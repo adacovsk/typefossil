@@ -16,8 +16,17 @@ from scipy import ndimage
 
 
 def pluck(path, seed_xy, frame_h=320, frame_w=220, baseline_row=232,
-          window=340, min_area=400, x_height=60):
-    """Return a baseline-anchored frame holding the glyph nearest ``seed_xy``."""
+          window=340, min_area=400, x_height=60, greyscale=True):
+    """Return a baseline-anchored frame holding the glyph nearest ``seed_xy``.
+
+    With ``greyscale`` (the default) the frame keeps the scan's own ink values
+    inside the component rather than a hard 0/1 mask. This matters more than it
+    sounds: a binarised impression has staircase edges, so it has to be blurred
+    back into smoothness before tracing, and that blur spreads ink across the
+    fine gaps a letter depends on -- it closed the gap between the two
+    horizontals of 'F'. The scan already holds a smooth ink boundary; throwing
+    it away and reconstructing it with a Gaussian is strictly worse.
+    """
     sx, sy = seed_xy
     im = Image.open(path).convert("L")
     x0, y0 = max(0, sx - window // 2), max(0, sy - window // 2)
@@ -44,7 +53,17 @@ def pluck(path, seed_xy, frame_h=320, frame_w=220, baseline_row=232,
         return None
     lid, sl = best
     r0, r1, c0, c1 = sl[0].start, sl[0].stop, sl[1].start, sl[1].stop
-    sub = (lbl[r0:r1, c0:c1] == lid)
+    sel = (lbl[r0:r1, c0:c1] == lid)
+    if greyscale:
+        # Ink intensity, normalised so paper is 0 and the darkest ink is 1,
+        # then restricted to this component so a neighbour cannot bleed in.
+        patch = a[r0:r1, c0:c1]
+        lo, hi = float(patch.min()), float(np.median(a))
+        ink_val = np.clip((hi - patch) / max(hi - lo, 1e-6), 0.0, 1.0)
+        grown = ndimage.binary_dilation(sel, iterations=2)
+        sub = np.where(grown, ink_val, 0.0).astype(np.float32)
+    else:
+        sub = sel.astype(np.float32)
     fr = np.zeros((frame_h, frame_w), np.float32)
     # Seat by the glyph's own cap height: these are plucked one at a time, so
     # there is no line of neighbours to take a baseline from.
