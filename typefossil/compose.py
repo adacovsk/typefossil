@@ -406,7 +406,7 @@ FIGURE_DESCENDING = set("4579")
 
 
 def seat_figures(masters: dict, baseline: int, x_height: int,
-                 centre_small: bool = False) -> dict:
+                 centre_small: bool = False, small_scale: float = 1.0) -> dict:
     """Regularise old-style figures without flattening them.
 
     Old-style figures are *meant* to sit at three different heights, so they
@@ -482,6 +482,14 @@ def seat_figures(masters: dict, baseline: int, x_height: int,
             if f is not None:
                 m = shift(m, baseline - f, 0)
         out[ch] = m
+
+    if small_scale != 1.0:
+        # The x-height figures can be brought up a little without touching
+        # their design: this scales them, it does not redraw them, so their
+        # proportions and weight relationship to the tall figures are preserved.
+        for ch in sorted(FIGURE_XHEIGHT):
+            if ch in out:
+                out[ch] = soften(scale(out[ch], small_scale, baseline, order=3), 0.4)
 
     if centre_small:
         # Optional: lift the small figures so they sit centred against the tall

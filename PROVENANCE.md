@@ -101,13 +101,23 @@ fraction to a leaf number, put it at leaves 414–442.
 
 **Still absent**: capital `X`, and `! " ' ( ) :`.
 
-Capital `X` is not printed in this volume, and that was established rather than
-assumed. Roman numerals were the obvious hope -- `X` is ten -- but the book's
-numbering never reaches it in a form that survives: Boece and Troilus run Books
-I-V, and the Astrolabe numbers its forty-odd conclusions in *arabic* figures,
-which is where this font's digits come from. Middle English has no `X`-initial
-words. Every apparent `X` in the OCR is an `I` misread: the running head the
-transcription gives as "Book XX" reads **Book II** on the page.
+Capital `X` is not printed in the sampled corpus, and every route to it was
+checked rather than assumed:
+
+| Where a capital `X` might appear | What is actually there |
+|---|---|
+| Book numbering | Boece and Troilus run Books I-V |
+| Prose and metre headings | red Latin incipits, not numerals; the few numbered labels reach VI |
+| The Astrolabe's forty-odd conclusions | *arabic* figures -- which is where this font's digits come from |
+| Godefrey's chapter numbers | roman, and they pass a hundred, but set as "capitulo Cxij": capital C, **lowercase** xij |
+| The Chaucer's colophon | dates itself "the 8th day of May, 1896" -- arabic |
+| Words beginning with `X` | Middle English has none |
+
+Note the Godefrey case, which is the closest miss: the numbering does reach and
+pass ten, so the letter is printed -- as a *lowercase* `x`, which this font
+already has from body text. Every apparent capital `X` in the OCR is an `I`
+misread; the running head the transcription gives as "Book XX" reads **Book II**
+on the page.
 
 Capital `F` took two attempts and the first was wrong. Troy sets a lowercase `f`
 even at the start of a line -- "ful sykerly they slepten" -- so the capital
