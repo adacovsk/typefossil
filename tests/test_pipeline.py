@@ -240,3 +240,13 @@ def test_full_sheet_does_not_mangle_a_name_it_cannot_set(tmp_path=None):
     fb.save(str(out))
     png = specimen.full_sheet(str(out), str(tmp_path / "s.png"), family="Kelmscott")
     assert pathlib.Path(png).exists()
+
+
+def test_kmeans_is_blocked_and_matches_across_block_sizes():
+    """Blocking is a memory optimisation and must not change the answer."""
+    from typefossil import cluster
+    rng = np.random.default_rng(4)
+    P = np.vstack([rng.normal(c, 0.15, (40, 5)) for c in (0.0, 4.0, 8.0)])
+    a = cluster.kmeans(P, 3, seed=1, block=10)
+    b = cluster.kmeans(P, 3, seed=1, block=10_000)
+    assert (a == b).all()

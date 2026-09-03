@@ -42,24 +42,40 @@ def project(F: np.ndarray, dims: int = 48, sample: int = 4000, seed: int = 0) ->
     return np.ascontiguousarray(X @ Vt[:dims].T)
 
 
-def kmeans(P: np.ndarray, k: int, iters: int = 45, seed: int = 0,
-           block: int = 2000) -> np.ndarray:
-    """Plain Lloyd's algorithm, blocked so the distance matrix stays small."""
+def kmeans(P: np.ndarray, k: int, iters: int = 60, seed: int = 0,
+           block: int = 20000) -> np.ndarray:
+    """Lloyd's algorithm, blocked and expressed as a matrix product.
+
+    Two things matter at this size and they pull against each other. Written
+    naively -- an (n, k, d) difference tensor -- it is memory bound and crawls;
+    at 67k instances it took the better part of an hour where this takes a
+    minute. Written as one GEMM over all points it is fast but allocates an
+    (n, k) matrix per iteration, which for 323k points and 700 clusters is
+    1.8 GB of float64 and will fail outright on a machine with anything else
+    running.
+
+    So: the |a-b|^2 = |a|^2 - 2a.b + |b|^2 identity for the speed, in row
+    blocks for the footprint. Peak allocation is (block, k) regardless of how
+    many instances there are.
+    """
     rng = np.random.default_rng(seed)
     C = P[rng.choice(len(P), k, replace=False)].copy()
-    lab = np.zeros(len(P), np.int32)
+    Pn = (P * P).sum(1)[:, None]
+    lab = np.full(len(P), -1, np.int32)
     for _ in range(iters):
+        new = np.empty(len(P), np.int32)
+        Cn = (C * C).sum(1)[None, :]
         for s in range(0, len(P), block):
-            blk = P[s:s + block]
-            lab[s:s + block] = ((blk[:, None, :] - C[None, :, :]) ** 2).sum(-1).argmin(1)
-        new = C.copy()
+            blk = slice(s, s + block)
+            d = Pn[blk] - 2.0 * (P[blk] @ C.T) + Cn
+            new[blk] = d.argmin(1)
+        if (new == lab).all():
+            break
+        lab = new
         for j in range(k):
             m = lab == j
             if m.any():
-                new[j] = P[m].mean(0)
-        if np.allclose(new, C, atol=1e-4):
-            return lab
-        C = new
+                C[j] = P[m].mean(0)
     return lab
 
 
