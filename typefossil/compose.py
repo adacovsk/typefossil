@@ -396,3 +396,98 @@ def add_dot_below(base: np.ndarray, period: np.ndarray, baseline: int,
     if len(h_cols) and len(p_cols):
         dx = float(h_cols.mean() - p_cols.mean())
     return union(hook, shift(period, 0, dx))
+
+
+#: Old-style figures by class. Which figures descend and which ascend is a fact
+#: about the design, exactly as with the letters -- see `seat_masters`.
+FIGURE_XHEIGHT = set("0123")
+FIGURE_ASCENDING = set("68")
+FIGURE_DESCENDING = set("4579")
+
+
+def seat_figures(masters: dict, baseline: int, x_height: int) -> dict:
+    """Regularise old-style figures without flattening them.
+
+    Old-style figures are *meant* to sit at three different heights, so they
+    cannot be seated like letters -- but that is not licence to leave them
+    wherever the scan put them. Within a class they must agree, and in the
+    source they did not: '2' and '3' rested four pixels above the baseline that
+    '6' and '8' sat on, and '5' began eight pixels below the other descenders
+    and finished four below them. That is drift from per-line baseline
+    estimates, and it reads as figures scattered about the line.
+
+    So: everything that does not descend is seated on the baseline, and the
+    descending figures are aligned by their *tops* to the x-height the
+    non-descenders establish, then given a common depth below the line.
+    """
+    out = dict(masters)
+    xh_top = []
+    for ch in sorted(FIGURE_XHEIGHT):
+        if ch in out and (f := foot_row(out[ch])) is not None:
+            out[ch] = shift(out[ch], baseline - f, 0)
+            rows = np.where((out[ch] > 0.5).any(axis=1))[0]
+            if len(rows):
+                xh_top.append(int(rows[0]))
+    for ch in sorted(FIGURE_ASCENDING):
+        if ch in out and (f := foot_row(out[ch])) is not None:
+            out[ch] = shift(out[ch], baseline - f, 0)
+
+    if not xh_top:
+        return out
+    goal_top = int(np.median(xh_top))
+    depths = []
+    for ch in sorted(FIGURE_DESCENDING):
+        if ch not in out:
+            continue
+        rows = np.where((out[ch] > 0.5).any(axis=1))[0]
+        if len(rows):
+            depths.append(int(rows[-1]) - int(rows[0]))
+    if not depths:
+        return out
+    goal_height = int(np.median(depths))
+    for ch in sorted(FIGURE_DESCENDING):
+        if ch not in out:
+            continue
+        rows = np.where((out[ch] > 0.5).any(axis=1))[0]
+        if not len(rows):
+            continue
+        m = shift(out[ch], goal_top - int(rows[0]), 0)          # tops agree
+        rows = np.where((m > 0.5).any(axis=1))[0]
+        h = int(rows[-1]) - int(rows[0])
+        if h > 0 and abs(h - goal_height) > 2:                   # depths agree
+            m = soften(scale(m, goal_height / h, goal_top, order=3), 0.5)
+        out[ch] = m
+    return out
+
+
+def thin_joint(mask: np.ndarray, iterations: int = 3, level: float = 0.5,
+               region=(0.0, 0.62, 0.35, 1.0)) -> np.ndarray:
+    """Open up a joint where two strokes meet and the ink has filled in.
+
+    Where two strokes of a letter converge, the ink of a single impression
+    often floods the corner between them, and the outline fitter reproduces the
+    flood rather than the letterform. Troy's 'F' does this where its top bar
+    turns down to meet the middle arm: printed, the two are distinct; in one
+    heavily inked impression they merge into a wedge.
+
+    Growing the letter's own counter back into the joint fixes it without
+    touching the outer contour, so the letter's width, weight and silhouette
+    are unchanged -- only the corner opens. ``region`` bounds where this is
+    allowed, as fractions of the ink box (top, bottom, left, right), so a
+    counter cannot grow anywhere it likes.
+    """
+    from scipy import ndimage
+
+    ink = mask > level
+    holes = ndimage.binary_fill_holes(ink) & ~ink
+    if not holes.any():
+        return mask.copy()
+    rows = np.where(ink.any(axis=1))[0]
+    cols = np.where(ink.any(axis=0))[0]
+    r0, r1, c0, c1 = rows[0], rows[-1], cols[0], cols[-1]
+    t, b, l, r = region
+    band = np.zeros_like(ink)
+    band[r0 + int((r1 - r0) * t):r0 + int((r1 - r0) * b),
+         c0 + int((c1 - c0) * l):c0 + int((c1 - c0) * r) + 1] = True
+    grown = ndimage.binary_dilation(holes, iterations=iterations) & band
+    return np.where(grown, 0.0, mask).astype(np.float32)
