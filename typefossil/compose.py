@@ -628,7 +628,7 @@ def strip_stem(mask: np.ndarray, level: float = 0.5, frac: float = 0.72) -> np.n
 
 def compose_x(v_mask: np.ndarray, baseline: int, level: float = 0.5,
               overlap: float = 0.10, weight: int = 0, serif_trim: int = 0,
-              notch: float = 0.0,
+              notch: float = 0.0, thin: int = 0,
               x_height_top: int | None = None) -> np.ndarray:
     """Build a capital 'X' from two half-height copies of 'V'.
 
@@ -676,6 +676,21 @@ def compose_x(v_mask: np.ndarray, baseline: int, level: float = 0.5,
     half = cap / 2.0
     squashed = np.clip(ndimage.zoom(piece, (half / cap, 1.0), order=3), 0.0, 1.0)
 
+    # Weight the two strokes separately. 'V' already carries the modulation an
+    # X needs -- its left stroke is thick, its right thin -- and after the lower
+    # half is rotated the thick sides line up into one unbroken diagonal from
+    # upper left to lower right. Dilating the whole letter thickens both
+    # equally and throws that contrast away, which is what makes the result
+    # read as two bars crossing rather than as a letter of this face. So the
+    # thick side is dilated and the thin side may be eroded.
+    if weight > 0 or thin > 0:
+        lt, rt = split_strokes(squashed, level)
+        if weight > 0:
+            lt = ndimage.grey_dilation(lt, size=(weight * 2 + 1, weight * 2 + 1))
+        if thin > 0:
+            rt = ndimage.grey_erosion(rt, size=(1, thin * 2 + 1))
+        squashed = np.clip(np.maximum(lt, rt), 0.0, 1.0)
+
     out = np.zeros_like(v_mask)
     n = min(squashed.shape[0], out.shape[0] - top)
     out[top:top + n] = squashed[:n]
@@ -693,8 +708,6 @@ def compose_x(v_mask: np.ndarray, baseline: int, level: float = 0.5,
 
     if notch > 0:
         out = _open_wedge(out, level, notch)
-    if weight > 0:
-        out = ndimage.grey_dilation(out, size=(weight * 2 + 1, weight * 2 + 1))
     return align_left(np.clip(out, 0.0, 1.0).astype(np.float32), 4)
 
 
@@ -728,3 +741,59 @@ def _open_wedge(mask: np.ndarray, level: float, depth: float) -> np.ndarray:
         c = (cols[0] + cols[-1]) // 2
         out[r, max(0, c - cut // 2):c + cut // 2 + 1] = 0.0
     return out
+
+
+def compose_colon(period: np.ndarray, baseline: int, x_height: int,
+                  level: float = 0.5) -> np.ndarray:
+    """Build ':' by stacking the fount's own period.
+
+    A colon is two of the letter's existing dots, so nothing needs drawing.
+    The upper dot sits at the x-height line and the lower one on the baseline,
+    which is where the two marks of a colon go.
+    """
+    bb = ink_bbox(period, level)
+    if bb is None:
+        return period.copy()
+    dot_h = bb[1] - bb[0]
+    low = shift(period, baseline - bb[1], 0)
+    # Upper dot: its top aligned to the x-height line.
+    high = shift(period, (baseline - x_height) - bb[0], 0)
+    return union(low, high)
+
+
+def compose_dash(hyphen: np.ndarray, factor: float, level: float = 0.5) -> np.ndarray:
+    """Stretch the fount's hyphen into an en or em dash.
+
+    A dash is a hyphen's stroke at a different length, and lengthening it is
+    the one transformation that does not change what the mark *is*. The ends
+    are the hyphen's own, so the terminals stay the face's.
+
+    Only the middle is stretched: scaling the whole mark would stretch its
+    terminals too and thin the stroke, giving a dash that does not match the
+    hyphen it is supposed to be a longer form of.
+    """
+    from scipy import ndimage
+
+    bb = ink_bbox(hyphen, level)
+    if bb is None:
+        return hyphen.copy()
+    r0, r1, c0, c1 = bb
+    w = c1 - c0
+    keep = max(2, int(w * 0.30))                     # the two terminals
+    left = hyphen[:, c0:c0 + keep]
+    right = hyphen[:, c1 - keep:c1]
+    middle = hyphen[:, c0 + keep:c1 - keep]
+    if middle.shape[1] < 1:
+        middle = hyphen[:, c0 + keep:c0 + keep + 1]
+    target_mid = max(1, int(w * factor) - 2 * keep)
+    stretched = ndimage.zoom(middle, (1.0, target_mid / max(middle.shape[1], 1)),
+                             order=1)
+    out = np.zeros_like(hyphen)
+    x = c0
+    for part in (left, stretched, right):
+        n = min(part.shape[1], out.shape[1] - x)
+        if n <= 0:
+            break
+        out[:, x:x + n] = np.maximum(out[:, x:x + n], part[:, :n])
+        x += n
+    return np.clip(out, 0.0, 1.0).astype(np.float32)
