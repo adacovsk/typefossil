@@ -627,6 +627,8 @@ def strip_stem(mask: np.ndarray, level: float = 0.5, frac: float = 0.72) -> np.n
 
 
 def compose_x(v_mask: np.ndarray, baseline: int, level: float = 0.5,
+              overlap: float = 0.10, weight: int = 0, serif_trim: int = 0,
+              notch: float = 0.0,
               x_height_top: int | None = None) -> np.ndarray:
     """Build a capital 'X' from two half-height copies of 'V'.
 
@@ -634,19 +636,23 @@ def compose_x(v_mask: np.ndarray, baseline: int, level: float = 0.5,
     a capital X. The Press sets roman numerals in lowercase, so its numbering
     never needs one, and Middle English has no X-initial words.
 
-    The construction uses the face's own strokes so the letter carries Troy's
-    weight, modulation and terminals rather than being invented. A 'V' is two
-    diagonals meeting at a point, finished at their open ends with the flared
-    terminals the face uses. Squash one into the upper half of the cap height
-    and a rotated copy into the lower half, and their points meet at the middle
-    while the four terminals land at the four corners -- which is an X.
+    Squash a 'V' into the upper half of the cap height and a rotated copy into
+    the lower half: their points meet at the middle and the four flared
+    terminals land at the four corners. That keeps Troy's weight, modulation
+    and terminal shapes instead of inventing them.
 
-    Two earlier attempts failed for reasons worth keeping. Stretching V's
-    diagonals across the full width doubled their horizontal thickness and made
-    the letter far too heavy. Shearing them apart kept the weight but dragged
-    V's horizontal serifs into a bar across the top, and left the converging
-    foot as two bare spikes. A donor has to supply the *ends* you need, not
-    only the slopes -- which is what taking V whole, twice, does.
+    Three parameters exist because the naive version is wrong in three ways.
+    ``overlap`` slides the halves together -- V's point tapers short of its own
+    box, so butting the halves edge to edge leaves a visible break at the waist.
+    ``weight`` dilates: halving a letter's height without halving its width
+    makes its strokes read thinner than the rest of the alphabet. ``serif_trim``
+    shortens the top flares, which in a 'V' nearly meet across the top and, left
+    alone, close into a bar that an X should not have.
+
+    Two earlier constructions failed usefully. Stretching V's diagonals across
+    the full width doubled their horizontal thickness. Shearing them apart kept
+    the weight but left V's converging foot as bare spikes where an X wants
+    terminals. A donor must supply the *ends* you need, not only the slopes.
 
     Record it as drawn wherever this font's provenance is described. It is the
     only glyph here not taken from the page.
@@ -659,30 +665,66 @@ def compose_x(v_mask: np.ndarray, baseline: int, level: float = 0.5,
         return v_mask.copy()
     top, bot = int(rows[0]), int(rows[-1])
     cap = bot - top + 1
-    half = cap / 2.0
 
-    piece = v_mask[top:bot + 1, :]
+    piece = v_mask[top:bot + 1, :].copy()
+    if serif_trim > 0:
+        # Shorten only the top flares, leaving the diagonals alone.
+        band = max(4, int(piece.shape[0] * 0.22))
+        piece[:band] = ndimage.grey_erosion(
+            piece[:band], size=(1, serif_trim * 2 + 1))
+
+    half = cap / 2.0
     squashed = np.clip(ndimage.zoom(piece, (half / cap, 1.0), order=3), 0.0, 1.0)
-    h = squashed.shape[0]
 
     out = np.zeros_like(v_mask)
-    n = min(h, out.shape[0] - top)
-    out[top:top + n] = squashed[:n]                      # upper V
+    n = min(squashed.shape[0], out.shape[0] - top)
+    out[top:top + n] = squashed[:n]
 
-    # Rotate 180 degrees, not merely flip vertically: that keeps the thick
-    # stroke running unbroken from the upper left to the lower right, which is
-    # how a diagonal letter is modulated. A vertical flip alone would put the
-    # thick stroke on both left arms.
     lower = squashed[::-1, ::-1]
-    # Rotating in a frame wider than the ink slides the glyph sideways, so put
-    # its left edge back where the upper half's is.
     lc = np.where((lower > level).any(axis=0))[0]
     uc = np.where((squashed > level).any(axis=0))[0]
     if len(lc) and len(uc):
         lower = np.roll(lower, int(uc[0] - lc[0]), axis=1)
 
-    r0 = top + int(round(half))
+    r0 = top + int(round(half * (1.0 - overlap)))
     n = min(lower.shape[0], out.shape[0] - r0)
     if n > 0:
         out[r0:r0 + n] = np.maximum(out[r0:r0 + n], lower[:n])
-    return align_left(out, 4)
+
+    if notch > 0:
+        out = _open_wedge(out, level, notch)
+    if weight > 0:
+        out = ndimage.grey_dilation(out, size=(weight * 2 + 1, weight * 2 + 1))
+    return align_left(np.clip(out, 0.0, 1.0).astype(np.float32), 4)
+
+
+def _open_wedge(mask: np.ndarray, level: float, depth: float) -> np.ndarray:
+    """Cut the top and bottom wedges of an X open.
+
+    A 'V' closes at its foot, so two squashed copies leave the wedges between
+    the arms enclosed -- the serifs bridge across where an X should show open
+    sky. This removes the bridging ink, tapering the cut so it is widest at the
+    cap line and closes to nothing at the waist, which is the shape the gap
+    between two diverging arms actually has.
+    """
+    out = mask.copy()
+    ink = mask > level
+    rows = np.where(ink.any(axis=1))[0]
+    if not len(rows):
+        return out
+    top, bot = int(rows[0]), int(rows[-1])
+    h = bot - top + 1
+    band = int(h * depth)
+    for r in list(range(top, top + band)) + list(range(bot - band + 1, bot + 1)):
+        cols = np.where(ink[r])[0]
+        if len(cols) < 2:
+            continue
+        # distance from the waist, 1 at the cap line falling to 0 at the middle
+        t = abs((r - (top + bot) / 2)) / (h / 2)
+        span = cols[-1] - cols[0] + 1
+        cut = int(span * 0.42 * min(max(t, 0.0), 1.0))
+        if cut < 2:
+            continue
+        c = (cols[0] + cols[-1]) // 2
+        out[r, max(0, c - cut // 2):c + cut // 2 + 1] = 0.0
+    return out
