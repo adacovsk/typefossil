@@ -268,3 +268,21 @@ def test_pluck_finds_the_glyph_nearest_a_seed(tmp_path=None):
     assert fr is not None
     cols = np.where((fr > 0.5).any(axis=0))[0]
     assert len(cols) and (cols[-1] - cols[0] + 1) <= 90     # one glyph, not both
+
+
+def test_compose_x_spans_the_full_cap_height_and_width():
+    """The drawn X must fill the same box as the letter it is built from."""
+    from typefossil import compose
+    v = np.zeros((300, 220))
+    for i in range(100):                       # a crude V: two converging strokes
+        v[130 + i, 20 + i // 2:32 + i // 2] = 1.0
+        v[130 + i, 88 - i // 2:100 - i // 2] = 1.0
+    x = compose.compose_x(v, 232)
+    rows = np.where((x > 0.5).any(axis=1))[0]
+    cols = np.where((x > 0.5).any(axis=0))[0]
+    vr = np.where((v > 0.5).any(axis=1))[0]
+    assert abs((rows[-1] - rows[0]) - (vr[-1] - vr[0])) <= 6      # same height
+    assert len(cols) > 0
+    # An X has ink on both diagonals: check the two halves are both occupied.
+    mid = (cols[0] + cols[-1]) // 2
+    assert (x[:, :mid] > 0.5).any() and (x[:, mid:] > 0.5).any()

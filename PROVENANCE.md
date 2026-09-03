@@ -99,7 +99,24 @@ volume, but blackletter OCR maps yogh and long-s to `z`, so most of those are
 spurious. Mapping the genuine z-words to a fraction of the text, and that
 fraction to a leaf number, put it at leaves 414–442.
 
-**Still absent**: capital `X`, and `! " ' ( ) :`.
+**Drawn rather than traced**: capital `X`. It is the only such glyph, and the
+reason it exists is that a font for modern English needs one.
+
+No Kelmscott volume sampled prints a capital `X`, and the rule behind that is
+the interesting part -- see the table below. Rather than leave the alphabet
+short, the letter is built from the face's own strokes: two half-height copies
+of Troy's `V`, one rotated, so their points meet at the centre and their four
+flared terminals land at the four corners. It inherits the face's weight,
+modulation and terminal shapes rather than being invented outright, but it is
+drawn, and it is recorded as drawn.
+
+Two earlier constructions failed usefully. Stretching V's diagonals across the
+full width doubled their horizontal thickness and made the letter far too
+heavy. Shearing them apart preserved the weight but left V's converging foot as
+two bare spikes where an X wants terminals. A donor has to supply the *ends* you
+need, not only the slopes -- which is what taking V whole, twice, does.
+
+**Still absent**: `! " ' ( ) :`.
 
 Capital `X` is not printed in the sampled corpus, and every route to it was
 checked rather than assumed:

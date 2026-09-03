@@ -579,3 +579,110 @@ def lining_figures(masters: dict, baseline: int, height: int | None = None) -> d
             m = shift(m, baseline - foot, 0)
         out[c] = m
     return out
+
+
+def split_strokes(mask: np.ndarray, level: float = 0.5):
+    """Split a two-stroke letter such as 'V' into its left and right strokes.
+
+    Row by row: where the letter still has two separate runs of ink they are
+    the two strokes; where they have merged near the apex the single run is
+    divided at its middle. Returns ``(left, right)`` masks.
+    """
+    left = np.zeros_like(mask)
+    right = np.zeros_like(mask)
+    ink = mask > level
+    for r in range(mask.shape[0]):
+        cols = np.where(ink[r])[0]
+        if len(cols) == 0:
+            continue
+        breaks = np.where(np.diff(cols) > 1)[0]
+        if len(breaks):
+            a, b = cols[:breaks[0] + 1], cols[breaks[-1] + 1:]
+        else:
+            mid = len(cols) // 2
+            a, b = cols[:mid], cols[mid:]
+        left[r, a] = mask[r, a]
+        right[r, b] = mask[r, b]
+    return left, right
+
+
+def strip_stem(mask: np.ndarray, level: float = 0.5, frac: float = 0.72) -> np.ndarray:
+    """Remove a letter's vertical stem, leaving its other strokes.
+
+    A stem is the run of columns inked through most of the letter's height.
+    Used to take the arm and leg off a 'K' without the upright they hang from.
+    """
+    ink = mask > level
+    rows = np.where(ink.any(axis=1))[0]
+    if not len(rows):
+        return mask.copy()
+    h = rows[-1] - rows[0] + 1
+    counts = ink[rows[0]:rows[-1] + 1].sum(axis=0)
+    stem_cols = np.where(counts >= h * frac)[0]
+    if not len(stem_cols):
+        return mask.copy()
+    out = mask.copy()
+    out[:, :stem_cols[-1] + 1] = 0.0
+    return out
+
+
+def compose_x(v_mask: np.ndarray, baseline: int, level: float = 0.5,
+              x_height_top: int | None = None) -> np.ndarray:
+    """Build a capital 'X' from two half-height copies of 'V'.
+
+    This letter is *drawn*, not traced: no Kelmscott volume sampled here prints
+    a capital X. The Press sets roman numerals in lowercase, so its numbering
+    never needs one, and Middle English has no X-initial words.
+
+    The construction uses the face's own strokes so the letter carries Troy's
+    weight, modulation and terminals rather than being invented. A 'V' is two
+    diagonals meeting at a point, finished at their open ends with the flared
+    terminals the face uses. Squash one into the upper half of the cap height
+    and a rotated copy into the lower half, and their points meet at the middle
+    while the four terminals land at the four corners -- which is an X.
+
+    Two earlier attempts failed for reasons worth keeping. Stretching V's
+    diagonals across the full width doubled their horizontal thickness and made
+    the letter far too heavy. Shearing them apart kept the weight but dragged
+    V's horizontal serifs into a bar across the top, and left the converging
+    foot as two bare spikes. A donor has to supply the *ends* you need, not
+    only the slopes -- which is what taking V whole, twice, does.
+
+    Record it as drawn wherever this font's provenance is described. It is the
+    only glyph here not taken from the page.
+    """
+    from scipy import ndimage
+
+    rows = np.where((v_mask > level).any(axis=1))[0]
+    cols = np.where((v_mask > level).any(axis=0))[0]
+    if not len(rows) or not len(cols):
+        return v_mask.copy()
+    top, bot = int(rows[0]), int(rows[-1])
+    cap = bot - top + 1
+    half = cap / 2.0
+
+    piece = v_mask[top:bot + 1, :]
+    squashed = np.clip(ndimage.zoom(piece, (half / cap, 1.0), order=3), 0.0, 1.0)
+    h = squashed.shape[0]
+
+    out = np.zeros_like(v_mask)
+    n = min(h, out.shape[0] - top)
+    out[top:top + n] = squashed[:n]                      # upper V
+
+    # Rotate 180 degrees, not merely flip vertically: that keeps the thick
+    # stroke running unbroken from the upper left to the lower right, which is
+    # how a diagonal letter is modulated. A vertical flip alone would put the
+    # thick stroke on both left arms.
+    lower = squashed[::-1, ::-1]
+    # Rotating in a frame wider than the ink slides the glyph sideways, so put
+    # its left edge back where the upper half's is.
+    lc = np.where((lower > level).any(axis=0))[0]
+    uc = np.where((squashed > level).any(axis=0))[0]
+    if len(lc) and len(uc):
+        lower = np.roll(lower, int(uc[0] - lc[0]), axis=1)
+
+    r0 = top + int(round(half))
+    n = min(lower.shape[0], out.shape[0] - r0)
+    if n > 0:
+        out[r0:r0 + n] = np.maximum(out[r0:r0 + n], lower[:n])
+    return align_left(out, 4)
