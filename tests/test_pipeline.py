@@ -250,3 +250,21 @@ def test_kmeans_is_blocked_and_matches_across_block_sizes():
     a = cluster.kmeans(P, 3, seed=1, block=10)
     b = cluster.kmeans(P, 3, seed=1, block=10_000)
     assert (a == b).all()
+
+
+def test_pluck_finds_the_glyph_nearest_a_seed(tmp_path=None):
+    """Reading a page and naming coordinates has to survive a neighbour."""
+    import pathlib, tempfile
+    import numpy as np
+    from PIL import Image
+    from typefossil import pluck as pl
+    tmp_path = pathlib.Path(tmp_path or tempfile.mkdtemp())
+    page = np.full((600, 600), 240, np.uint8)
+    page[200:300, 100:180] = 20          # the target
+    page[200:300, 400:480] = 20          # a decoy far away
+    p = tmp_path / "page.png"
+    Image.fromarray(page).save(p)
+    fr = pl.pluck(str(p), (140, 250), x_height=60, min_area=200)
+    assert fr is not None
+    cols = np.where((fr > 0.5).any(axis=0))[0]
+    assert len(cols) and (cols[-1] - cols[0] + 1) <= 90     # one glyph, not both
