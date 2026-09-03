@@ -53,3 +53,33 @@ def pluck(path, seed_xy, frame_h=320, frame_w=220, baseline_row=232,
         return None
     fr[top:top + (r1 - r0), 4:4 + (c1 - c0)] = sub
     return fr
+
+
+def align_and_average(frames, level: float = 0.5, limit: int = 12):
+    """Average plucked impressions after aligning them to the first.
+
+    Plucked frames are seated by their own cap height, not by a shared text
+    line, so two impressions of the same letter can sit a few pixels apart.
+    Averaging them unaligned produces a half-value ghost along every edge,
+    which the outline fitter then renders as a thin or broken stroke -- it made
+    the leg of 'K' fade where it meets the stem.
+    """
+    import numpy as np
+    from scipy import ndimage
+
+    frames = [f for f in frames if f is not None]
+    if not frames:
+        return None
+    if len(frames) == 1:
+        return frames[0].copy()
+    ref = frames[0]
+    out = [ref]
+    for f in frames[1:]:
+        best, best_score = (0, 0), -1.0
+        for dy in range(-limit, limit + 1):
+            for dx in range(-limit, limit + 1):
+                s = float((ndimage.shift(f, (dy, dx), order=0, cval=0.0) * ref).sum())
+                if s > best_score:
+                    best, best_score = (dy, dx), s
+        out.append(ndimage.shift(f, best, order=1, cval=0.0))
+    return np.mean(out, axis=0)
