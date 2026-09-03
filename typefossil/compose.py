@@ -405,7 +405,8 @@ FIGURE_ASCENDING = set("68")
 FIGURE_DESCENDING = set("4579")
 
 
-def seat_figures(masters: dict, baseline: int, x_height: int) -> dict:
+def seat_figures(masters: dict, baseline: int, x_height: int,
+                 centre_small: bool = False) -> dict:
     """Regularise old-style figures without flattening them.
 
     Old-style figures are *meant* to sit at three different heights, so they
@@ -445,18 +446,57 @@ def seat_figures(masters: dict, baseline: int, x_height: int) -> dict:
     if not depths:
         return out
     goal_height = int(np.median(depths))
-    for ch in sorted(FIGURE_DESCENDING):
+    # The taller figures -- ascending and descending alike -- are brought to one
+    # height and one baseline. Strictly, old-style figures descend; in practice
+    # a row of them reads as scattered, and the small x-height figures alone
+    # carry enough of the old-style character. The small ones keep it; these
+    # line up.
+    # Align the taller figures by their *tops*, not by ink height. A figure
+    # whose foot dips slightly below the line -- '8' does -- has a taller ink
+    # box for the same visual height, so equalising height leaves it standing
+    # proud. What the eye reads is where the tops sit.
+    tall = sorted(FIGURE_ASCENDING | FIGURE_DESCENDING)
+    seated = {}
+    for ch in tall:
         if ch not in out:
             continue
-        rows = np.where((out[ch] > 0.5).any(axis=1))[0]
-        if not len(rows):
+        f = foot_row(out[ch])
+        if f is None:
             continue
-        m = shift(out[ch], goal_top - int(rows[0]), 0)          # tops agree
+        seated[ch] = shift(out[ch], baseline - f, 0)
+    if not seated:
+        return out
+    tops = {}
+    for ch, m in seated.items():
         rows = np.where((m > 0.5).any(axis=1))[0]
-        h = int(rows[-1]) - int(rows[0])
-        if h > 0 and abs(h - goal_height) > 2:                   # depths agree
-            m = soften(scale(m, goal_height / h, goal_top, order=3), 0.5)
+        if len(rows):
+            tops[ch] = baseline - int(rows[0])
+    if not tops:
+        return out
+    goal_cap = int(np.median(list(tops.values())))
+    for ch, m in seated.items():
+        cap = tops.get(ch)
+        if cap and abs(cap - goal_cap) >= 1:
+            m = soften(scale(m, goal_cap / cap, baseline, order=3), 0.5)
+            f = foot_row(m)
+            if f is not None:
+                m = shift(m, baseline - f, 0)
         out[ch] = m
+
+    if centre_small:
+        # Optional: lift the small figures so they sit centred against the tall
+        # ones rather than resting on the line with a large gap above. This is
+        # a departure from how they print -- old-style figures sit *on* the
+        # baseline -- and it is here because a bare row of figures reads better
+        # for it, not because the type does this.
+        for ch in sorted(FIGURE_XHEIGHT):
+            if ch not in out:
+                continue
+            rows = np.where((out[ch] > 0.5).any(axis=1))[0]
+            if not len(rows):
+                continue
+            small_cap = baseline - int(rows[0])
+            out[ch] = shift(out[ch], -int((goal_cap - small_cap) / 2), 0)
     return out
 
 
@@ -491,3 +531,43 @@ def thin_joint(mask: np.ndarray, iterations: int = 3, level: float = 0.5,
          c0 + int((c1 - c0) * l):c0 + int((c1 - c0) * r) + 1] = True
     grown = ndimage.binary_dilation(holes, iterations=iterations) & band
     return np.where(grown, 0.0, mask).astype(np.float32)
+
+
+def lining_figures(masters: dict, baseline: int, height: int | None = None) -> dict:
+    """Convert old-style figures to a lining set: one height, one baseline.
+
+    This is a *departure from the source*, not a correction, and it should be
+    recorded as one. Troy's figures are old-style -- '0' to '3' at x-height,
+    '6' and '8' ascending, '4' '5' '7' '9' descending -- which is how Morris cut
+    them and how they print. Old-style figures are made for running prose,
+    where they sit among lowercase without shouting; they look scattered when
+    set as a bare row, and modern readers mostly expect lining figures.
+
+    Scaling each figure to a common height and seating it on the baseline gives
+    that, at the cost of the design's own rhythm. Keep the old-style masters if
+    you want both: the two are alternates of the same fount, not a right and a
+    wrong version.
+    """
+    figs = [c for c in masters if c.isdigit()]
+    if not figs:
+        return dict(masters)
+    heights = {}
+    for c in figs:
+        rows = np.where((masters[c] > 0.5).any(axis=1))[0]
+        if len(rows):
+            heights[c] = int(rows[-1]) - int(rows[0]) + 1
+    if not heights:
+        return dict(masters)
+    goal = height or int(np.percentile(list(heights.values()), 75))
+    out = dict(masters)
+    for c, h in heights.items():
+        m = masters[c]
+        if abs(h - goal) > 2:
+            rows = np.where((m > 0.5).any(axis=1))[0]
+            m = shift(m, baseline - int(rows[-1]), 0)        # foot to baseline
+            m = soften(scale(m, goal / h, baseline, order=3), 0.5)
+        foot = foot_row(m)
+        if foot is not None:
+            m = shift(m, baseline - foot, 0)
+        out[c] = m
+    return out
