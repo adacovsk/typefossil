@@ -106,12 +106,19 @@ checked rather than assumed:
 
 | Where a capital `X` might appear | What is actually there |
 |---|---|
-| Book numbering | Boece and Troilus run Books I-V |
-| Prose and metre headings | red Latin incipits, not numerals; the few numbered labels reach VI |
+| Chaucer / Boece book numbering | capital roman -- but the books only run I to V |
+| Prose and metre headings | red Latin incipits, not numerals |
 | The Astrolabe's forty-odd conclusions | *arabic* figures -- which is where this font's digits come from |
-| Godefrey's chapter numbers | roman, and they pass a hundred, but set as "capitulo Cxij": capital C, **lowercase** xij |
-| The Chaucer's colophon | dates itself "the 8th day of May, 1896" -- arabic |
+| Godefrey's chapter numbers | "capitulo Cxij" -- capital C, **lowercase** xij |
+| Psalmi Penitentiales' psalm numbers | "Ps. xxxi.", "Ps. xxxvii.", "Ps. l." -- **lowercase**, and past ten |
+| The Chaucer's colophon | "the 8th day of May, 1896" -- arabic |
 | Words beginning with `X` | Middle English has none |
+
+The rule behind all of it: **the Kelmscott Press sets roman numerals in
+lowercase**. Capital roman appears only in running heads -- "Book II.", "Book
+III." -- and no work in these volumes has more than five books. Everything that
+counts higher (chapters, psalms, sections) is set lowercase. So the corpus does
+reach and pass ten repeatedly; it simply never does so in capitals.
 
 Note the Godefrey case, which is the closest miss: the numbering does reach and
 pass ten, so the letter is printed -- as a *lowercase* `x`, which this font
