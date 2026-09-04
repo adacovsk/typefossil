@@ -116,7 +116,14 @@ heavy. Shearing them apart preserved the weight but left V's converging foot as
 two bare spikes where an X wants terminals. A donor has to supply the *ends* you
 need, not only the slopes -- which is what taking V whole, twice, does.
 
-**Still absent**: `! " ' ( ) :`.
+**Composed from the fount's own marks**: `:` `'` `"`. None was printed in the
+sampled pages, and none needed drawing. A colon is two of the existing period,
+one on the baseline and one at the x-height. An apostrophe is a raised comma --
+it was cut as one for centuries, so lifting the comma to the cap line gives the
+mark this face would have had, with its own weight and its own tail. A double
+quote is two of those.
+
+**Still absent**: `!` `(` `)`.
 
 Capital `X` is not printed in the sampled corpus, and every route to it was
 checked rather than assumed:

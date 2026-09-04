@@ -743,24 +743,6 @@ def _open_wedge(mask: np.ndarray, level: float, depth: float) -> np.ndarray:
     return out
 
 
-def compose_colon(period: np.ndarray, baseline: int, x_height: int,
-                  level: float = 0.5) -> np.ndarray:
-    """Build ':' by stacking the fount's own period.
-
-    A colon is two of the letter's existing dots, so nothing needs drawing.
-    The upper dot sits at the x-height line and the lower one on the baseline,
-    which is where the two marks of a colon go.
-    """
-    bb = ink_bbox(period, level)
-    if bb is None:
-        return period.copy()
-    dot_h = bb[1] - bb[0]
-    low = shift(period, baseline - bb[1], 0)
-    # Upper dot: its top aligned to the x-height line.
-    high = shift(period, (baseline - x_height) - bb[0], 0)
-    return union(low, high)
-
-
 def compose_dash(hyphen: np.ndarray, factor: float, level: float = 0.5) -> np.ndarray:
     """Stretch the fount's hyphen into an en or em dash.
 
@@ -797,3 +779,40 @@ def compose_dash(hyphen: np.ndarray, factor: float, level: float = 0.5) -> np.nd
         out[:, x:x + n] = np.maximum(out[:, x:x + n], part[:, :n])
         x += n
     return np.clip(out, 0.0, 1.0).astype(np.float32)
+
+
+def compose_quotes(comma: np.ndarray, baseline: int, cap_top: int,
+                   gap: float = 0.55, level: float = 0.5):
+    """Build the apostrophe and double quote from the fount's comma.
+
+    Not a shortcut: an apostrophe *is* a raised comma, and was cut as one for
+    centuries. Lifting the comma to the cap line gives the mark the face would
+    have had, with its own weight and its own tail. The double quote is two of
+    them, spaced by a fraction of the mark's width.
+
+    Returns ``(quotesingle, quotedbl)``.
+    """
+    bb = ink_bbox(comma, level)
+    if bb is None:
+        return comma.copy(), comma.copy()
+    r0, r1, c0, c1 = bb
+    single = shift(comma, cap_top - r0, 0)
+    w = c1 - c0
+    second = shift(single, 0, w * (1.0 + gap))
+    return single, union(single, second)
+
+
+def compose_colon(period: np.ndarray, baseline: int, x_height: int,
+                  level: float = 0.5) -> np.ndarray:
+    """Build ':' by stacking the fount's own period.
+
+    A colon is two of the letter's existing dots, so nothing needs drawing.
+    The lower dot sits on the baseline and the upper one at the x-height line,
+    which is where the two marks of a colon go.
+    """
+    bb = ink_bbox(period, level)
+    if bb is None:
+        return period.copy()
+    low = shift(period, baseline - bb[1], 0)
+    high = shift(period, (baseline - x_height) - bb[0], 0)
+    return union(low, high)

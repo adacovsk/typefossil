@@ -286,3 +286,16 @@ def test_compose_x_spans_the_full_cap_height_and_width():
     # An X has ink on both diagonals: check the two halves are both occupied.
     mid = (cols[0] + cols[-1]) // 2
     assert (x[:, :mid] > 0.5).any() and (x[:, mid:] > 0.5).any()
+
+
+def test_compose_quotes_raises_the_comma_to_the_cap_line():
+    """An apostrophe is a raised comma; the double quote is two of them."""
+    from typefossil import compose
+    comma = np.zeros((300, 220))
+    comma[220:245, 30:48] = 1.0                 # a mark sitting on the baseline
+    single, double = compose.compose_quotes(comma, 232, 129)
+    srows = np.where((single > 0.5).any(axis=1))[0]
+    assert srows[0] == 129                       # lifted to the cap line
+    scols = np.where((single > 0.5).any(axis=0))[0]
+    dcols = np.where((double > 0.5).any(axis=0))[0]
+    assert len(dcols) > len(scols)               # two marks, not one
